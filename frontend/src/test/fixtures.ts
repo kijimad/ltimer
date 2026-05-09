@@ -63,7 +63,6 @@ export const DAILY_WORK: DailyWorkEntry[] = [
 
 export const WORKFLOW_DATA: WorkflowData = {
   generated_at: "2024-03-01T12:00:00",
-  cutoff_date: "2023-12-01",
   tasks: TASKS,
   heatmap: Array.from({ length: 7 }, () => Array(24).fill(0)),
   daily_work: DAILY_WORK,

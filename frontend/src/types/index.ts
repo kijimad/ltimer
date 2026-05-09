@@ -26,7 +26,7 @@ export interface DraftEntry {
 
 export interface WorkflowData {
   generated_at: string;
-  cutoff_date: string;
+  cutoff_date?: string;
   tasks: Task[];
   heatmap: number[][];
   daily_work: DailyWorkEntry[];

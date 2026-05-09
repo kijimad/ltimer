@@ -14,6 +14,11 @@ import { DailyWork } from "./components/charts/DailyWork.tsx";
 import { NetProfitTrend } from "./components/charts/NetProfitTrend.tsx";
 import { RoiChart } from "./components/charts/RoiChart.tsx";
 import { CashFlowChart } from "./components/charts/CashFlowChart.tsx";
+import { PercentileChart } from "./components/charts/PercentileChart.tsx";
+import { BatchSizeChart } from "./components/charts/BatchSizeChart.tsx";
+import { LittlesLaw } from "./components/charts/LittlesLaw.tsx";
+import { WaitTimeRatio } from "./components/charts/WaitTimeRatio.tsx";
+import { BottleneckChart } from "./components/charts/BottleneckChart.tsx";
 import { AlertList } from "./components/charts/AlertList.tsx";
 import { FileTable } from "./components/charts/FileTable.tsx";
 import { TaskTable } from "./components/charts/TaskTable.tsx";
@@ -58,8 +63,20 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "histogram",
         title: "Lead Time Distribution",
-        desc: "完了タスクのリードタイム分布(ヒストグラム)。中央値や外れ値が一目でわかる",
-        render: ({ tasks }) => <HistogramChart tasks={tasks} />,
+        desc: "完了タスクのリードタイム分布を期間ごとにスライスして比較。期間間の分布シフトや改善傾向が一目でわかる",
+        render: ({ tasks, unit }) => <HistogramChart tasks={tasks} unit={unit} />,
+      },
+      {
+        key: "percentile",
+        title: "Lead Time Percentile (SLE)",
+        desc: "期間ごとの完了タスクのリードタイム50th/85th/95thパーセンタイル推移。85thパーセンタイルがサービスレベル期待値(SLE)となり、予測可能性の指標になる",
+        render: ({ tasks, unit }) => <PercentileChart tasks={tasks} unit={unit} />,
+      },
+      {
+        key: "batch-size",
+        title: "Batch Size Analysis",
+        desc: "横軸がセッション数(clock_count)、縦軸がリードタイム。セッション数が多い=バッチが大きいタスクほどリードタイムが長い傾向があるか確認する",
+        render: ({ tasks }) => <BatchSizeChart tasks={tasks} />,
       },
     ],
   },
@@ -102,6 +119,18 @@ export const CHART_GROUPS: ChartGroup[] = [
         title: "Aging WIP",
         desc: "現在TODOのタスクが最初のクロックインから何日経過しているか。30日超は赤色で警告",
         render: ({ tasks }) => <AgingWip tasks={tasks} />,
+      },
+      {
+        key: "littles-law",
+        title: "Little's Law Validation",
+        desc: "リトルの法則(LT = WIP / Throughput)による予測リードタイムと実績リードタイムを比較。乖離が大きい期間はフローが不安定",
+        render: ({ tasks, unit }) => <LittlesLaw tasks={tasks} unit={unit} />,
+      },
+      {
+        key: "wait-time",
+        title: "Wait Time Ratio",
+        desc: "各タスクの待ち時間割合(1 - 実作業時間/リードタイム)。90%超は赤、70%超は橙。待ち時間が多いタスクほどフロー改善の余地がある",
+        render: ({ tasks }) => <WaitTimeRatio tasks={tasks} />,
       },
     ],
   },
@@ -146,6 +175,12 @@ export const CHART_GROUPS: ChartGroup[] = [
         title: "Cash Flow",
         desc: "期間ごとの(完了数 - 新規着手数)を累積表示。右肩上がりなら在庫が減りスループットが勝っている健全な状態",
         render: ({ tasks, unit }) => <CashFlowChart tasks={tasks} unit={unit} />,
+      },
+      {
+        key: "bottleneck",
+        title: "Bottleneck Analysis",
+        desc: "タスク単位のセッション数 vs リードタイム。バブルサイズは待ち時間割合。右上の大きなバブルほど多セッション・長期間・待ち時間大でボトルネック候補",
+        render: ({ tasks }) => <BottleneckChart tasks={tasks} />,
       },
     ],
   },

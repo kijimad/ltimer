@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 
 CLOCK_RE = re.compile(
     r"CLOCK: \[(\d{4}-\d{2}-\d{2}) \w+ (\d{2}:\d{2})\]--\[(\d{4}-\d{2}-\d{2}) \w+ (\d{2}:\d{2})\]\s+=>\s+(\d+):(\d{2})"
@@ -84,17 +84,11 @@ def parse_all(roam_dir):
 
 def aggregate(tasks):
     now = datetime.now()
-    cutoff = (now - timedelta(days=90)).strftime("%Y-%m-%d")
 
     results = []
     for t in tasks:
         first_clock_in = min(c["clock_in"] for c in t["clocks"])
         last_clock_out = max(c["clock_out"] for c in t["clocks"])
-        last_clock_in_date = max(c["clock_in"][:10] for c in t["clocks"])
-
-        # Filter: last clock-in within 3 months
-        if last_clock_in_date < cutoff:
-            continue
 
         first_date = datetime.strptime(first_clock_in[:10], "%Y-%m-%d")
         last_date = datetime.strptime(last_clock_out[:10], "%Y-%m-%d")
@@ -121,9 +115,6 @@ def aggregate(tasks):
     # Daily work: {date: {task_title: minutes}}
     daily_work = defaultdict(lambda: defaultdict(int))
     for t in tasks:
-        last_clock_in_date = max(c["clock_in"][:10] for c in t["clocks"])
-        if last_clock_in_date < cutoff:
-            continue
         for c in t["clocks"]:
             dt = datetime.strptime(c["clock_in"], "%Y-%m-%d %H:%M")
             heatmap[dt.weekday()][dt.hour] += c["minutes"]
@@ -140,7 +131,6 @@ def aggregate(tasks):
 
     return {
         "generated_at": now.isoformat(),
-        "cutoff_date": cutoff,
         "tasks": sorted(results, key=lambda x: -x["lead_time_days"]),
         "heatmap": heatmap,
         "daily_work": daily_work_list,

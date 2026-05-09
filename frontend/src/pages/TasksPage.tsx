@@ -14,11 +14,11 @@ export function TasksPage() {
 
   const filtered = useMemo(() => {
     if (!data) return null;
-    const cutoff = rangeStartDate(range).toISOString();
+    const cutoff = rangeStartDate(range).toISOString().slice(0, 10);
     const tasks = data.tasks.filter(
-      (t) => t.last_clock_out >= cutoff || t.first_clock_in >= cutoff
+      (t) => t.last_clock_out.slice(0, 10) >= cutoff || t.first_clock_in.slice(0, 10) >= cutoff
     );
-    const dailyWork = data.daily_work.filter((d) => d.date >= cutoff.slice(0, 10));
+    const dailyWork = data.daily_work.filter((d) => d.date >= cutoff);
     return { tasks, dailyWork };
   }, [data, range]);
 
@@ -31,7 +31,7 @@ export function TasksPage() {
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Lead Time Dashboard</Heading>
       <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {data.generated_at.slice(0, 16)} | Cutoff: {data.cutoff_date}
+        Generated: {data.generated_at.slice(0, 16)} | Cutoff: {rangeStartDate(range).toISOString().slice(0, 10)}
       </Text>
       <TimeRangeSwitch range={range} onChange={setRange} />
       {CHART_GROUPS.map((group) => (
