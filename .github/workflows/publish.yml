@@ -1,0 +1,51 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [publish]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout ltimer
+        uses: actions/checkout@v4
+
+      - name: Checkout roam
+        uses: actions/checkout@v4
+        with:
+          repository: kijimaD/roam
+          path: roam
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Parse org files
+        run: python scripts/parse_workflow.py roam public/workflow-data.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
