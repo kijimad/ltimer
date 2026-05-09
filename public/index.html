@@ -30,6 +30,7 @@
   .alert-list .days { color: #f85149; font-weight: 600; margin-right: 8px; }
   .alert-list .task-name { color: #c9d1d9; }
   .alert-list .file-name { color: #484f58; font-size: 0.8rem; margin-left: 8px; }
+  .desc { font-size: 0.78rem; color: #484f58; margin: -4px 0 10px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -40,71 +41,103 @@
 <div class="grid">
   <div class="card">
     <h2>Lead Time by Task (days)</h2>
+    <p class="desc">タスクごとのリードタイム(最初のクロックイン〜最後のクロックアウトの日数)を降順表示。長いものがボトルネック候補。橙=TODO, 緑=DONE, 紫=CLOSE</p>
     <canvas id="chart-leadtime"></canvas>
   </div>
 
   <div class="card">
     <h2>Lead Time vs Work Time</h2>
+    <p class="desc">横軸がリードタイム(日)、縦軸が実作業時間(分)。右下に位置するタスクは「長期間かかっているが実作業が少ない」=滞留している</p>
     <canvas id="chart-scatter"></canvas>
   </div>
 
   <div class="card">
     <h2>WIP Trend (weekly)</h2>
+    <p class="desc">週ごとの仕掛かり(WIP)数の推移。WIPが増え続けていれば着手過多でボトルネックの兆候</p>
     <canvas id="chart-wip"></canvas>
   </div>
 
   <div class="card">
     <h2>Throughput (weekly DONE)</h2>
+    <p class="desc">週ごとのDONE完了数。改善が進んでいるか、スループットが安定しているかを確認する</p>
     <canvas id="chart-throughput"></canvas>
   </div>
 
   <div class="card">
     <h2>Lead Time Distribution (DONE)</h2>
+    <p class="desc">完了タスクのリードタイム分布(ヒストグラム)。中央値や外れ値が一目でわかる</p>
     <canvas id="chart-histogram"></canvas>
   </div>
 
   <div class="card">
     <h2>Work Time Heatmap</h2>
+    <p class="desc">曜日x時間帯ごとの作業時間分布。CLOCKのクロックイン時刻から集計。色が濃いほど作業時間が多い</p>
     <canvas id="chart-heatmap"></canvas>
   </div>
 
   <div class="card">
     <h2>Flow Efficiency (%)</h2>
+    <p class="desc">各タスクの実作業時間÷リードタイムを%で表示。低いほど待ち時間が多く、作業が滞留している</p>
     <canvas id="chart-flow-eff"></canvas>
   </div>
 
   <div class="card">
     <h2>Aging WIP (TODO)</h2>
+    <p class="desc">現在TODOのタスクが最初のクロックインから何日経過しているか。30日超は赤色で警告</p>
     <canvas id="chart-aging"></canvas>
   </div>
 
   <div class="card full">
     <h2>Cumulative Flow Diagram</h2>
+    <p class="desc">週ごとのStarted/Completed/Closedの累積数を積み上げ面グラフで表示。バンド(帯)の幅がWIP量を示し、広がっていれば仕掛かりが増加している</p>
     <canvas id="chart-cfd"></canvas>
   </div>
 
   <div class="card full">
     <h2>Gantt Chart</h2>
+    <p class="desc">タスクごとの開始日〜終了日を横棒で表示。開始日順にソート。橙=TODO, 緑=DONE, 紫=CLOSE</p>
     <canvas id="chart-gantt"></canvas>
   </div>
 
   <div class="card full">
     <h2>Daily Burn Chart</h2>
+    <p class="desc">日ごとの累積Started/Completed数とWIP数を表示。Started-Completedの差がWIP。二つの線が離れるほど仕掛かりが溜まっている</p>
     <canvas id="chart-burn"></canvas>
   </div>
 
   <div class="card full">
     <h2>Daily Work by Task (min)</h2>
+    <p class="desc">日ごとにどのタスクに何分投入したかをスタック棒グラフで表示。作業配分のばらつきやマルチタスクの度合いを確認できる</p>
     <canvas id="chart-daily-work"></canvas>
   </div>
 
   <div class="card full">
-    <h2>Stagnation Alerts (TODO &gt; 30 days)</h2>
+    <h2>純利益トレンド (T - OE)</h2>
+    <p class="desc">純利益 = スループット(T) - 業務費用(OE)。緑棒が週あたり完了タスク数(T)、赤線が投入作業時間(OE)。Tが増えつつOEが減るのが理想。OEが高いのにTが低い週は非効率</p>
+    <canvas id="chart-toc-np"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>投資収益率 (T/I)</h2>
+    <p class="desc">投資収益率 = スループット(T) / 在庫(I)。週あたり完了数÷WIP数。高いほど仕掛かり在庫が効率的にスループットへ変換されている。低い週はWIPが多すぎる兆候</p>
+    <canvas id="chart-toc-roi"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>キャッシュフロー</h2>
+    <p class="desc">週ごとの(完了数 - 新規着手数)を累積表示。右肩上がりなら在庫が減りスループットが勝っている健全な状態。右肩下がりなら着手過多で在庫が膨らんでいる</p>
+    <canvas id="chart-toc-cf"></canvas>
+  </div>
+
+  <div class="card full">
+    <h2>滞留アラート (TODO &gt; 30日)</h2>
+    <p class="desc">TODO状態かつリードタイム30日超のタスクを警告表示。長期間放置されているタスクの棚卸しに使う</p>
     <ul id="alert-list" class="alert-list"></ul>
   </div>
 
   <div class="card full">
-    <h2>File Summary</h2>
+    <h2>ファイル別集計</h2>
+    <p class="desc">ファイルごとのタスク数、TODO/DONE/CLOSE内訳、合計作業時間、平均・最大リードタイム。ヘッダクリックでソート</p>
     <table id="table-files">
       <thead><tr>
         <th data-sort="file">File</th>
@@ -121,7 +154,8 @@
   </div>
 
   <div class="card full">
-    <h2>Tasks</h2>
+    <h2>タスク一覧</h2>
+    <p class="desc">全タスクの詳細一覧。タスク名、ファイル、ステータス、リードタイム、作業時間、セッション数。ヘッダクリックでソート</p>
     <table id="table-tasks">
       <thead><tr>
         <th data-sort="title">Task</th>
@@ -165,6 +199,9 @@ async function main() {
   renderGantt(data.tasks);
   renderBurnChart(data.tasks);
   renderDailyWork(data.daily_work);
+  renderTocNetProfit(data.tasks, data.daily_work);
+  renderTocROI(data.tasks);
+  renderTocCashFlow(data.tasks);
   renderAlerts(data.tasks);
   renderFileTable(data.tasks);
   renderTable(data.tasks);
@@ -696,6 +733,140 @@ function renderDailyWork(dailyWork) {
       scales: {
         x: { stacked: true, ticks: { maxTicksLimit: 20 }, title: { display: true, text: 'Date' } },
         y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Minutes' } },
+      },
+    }
+  });
+}
+
+// --- TOC (Theory of Constraints) Metrics ---
+
+function tocWeeklyData(tasks, dailyWork) {
+  const allWeeks = new Set();
+  const startedByWeek = {};
+  const completedByWeek = {};
+  const wipByWeek = {};
+  const oeByWeek = {};
+
+  for (const t of tasks) {
+    const sw = weekKey(t.first_clock_in);
+    allWeeks.add(sw);
+    startedByWeek[sw] = (startedByWeek[sw] || 0) + 1;
+    const cd = completedDate(t);
+    if (cd) {
+      const cw = weekKey(cd);
+      allWeeks.add(cw);
+      completedByWeek[cw] = (completedByWeek[cw] || 0) + 1;
+    }
+  }
+
+  if (dailyWork) {
+    for (const d of dailyWork) {
+      const w = weekKey(d.date);
+      allWeeks.add(w);
+      const dayMinutes = d.tasks.reduce((s, t) => s + t.minutes, 0);
+      oeByWeek[w] = (oeByWeek[w] || 0) + dayMinutes;
+    }
+  }
+
+  const sortedWeeks = [...allWeeks].sort();
+  for (const w of sortedWeeks) {
+    let wip = 0;
+    for (const t of tasks) {
+      const sw = weekKey(t.first_clock_in);
+      const cd = completedDate(t);
+      const ew = cd ? weekKey(cd) : '9999-99-99';
+      if (sw <= w && w < ew) wip++;
+    }
+    wipByWeek[w] = wip;
+  }
+
+  return { sortedWeeks, startedByWeek, completedByWeek, wipByWeek, oeByWeek };
+}
+
+function renderTocNetProfit(tasks, dailyWork) {
+  const { sortedWeeks, completedByWeek, oeByWeek } = tocWeeklyData(tasks, dailyWork);
+  if (sortedWeeks.length === 0) return;
+
+  const throughput = sortedWeeks.map(w => completedByWeek[w] || 0);
+  const oeHours = sortedWeeks.map(w => Math.round((oeByWeek[w] || 0) / 60 * 10) / 10);
+
+  new Chart(document.getElementById('chart-toc-np'), {
+    type: 'bar',
+    data: {
+      labels: sortedWeeks,
+      datasets: [
+        { label: 'Throughput (completed)', data: throughput, backgroundColor: '#3fb950', order: 2 },
+        { label: 'OE (work hours)', data: oeHours, type: 'line', borderColor: '#f85149', backgroundColor: '#f8514922', pointRadius: 2, tension: 0.3, yAxisID: 'y1', order: 1 },
+      ]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+      scales: {
+        x: { title: { display: true, text: 'Week' } },
+        y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Completed tasks' } },
+        y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Work hours' }, grid: { drawOnChartArea: false } },
+      },
+    }
+  });
+}
+
+function renderTocROI(tasks) {
+  const { sortedWeeks, completedByWeek, wipByWeek } = tocWeeklyData(tasks, null);
+  if (sortedWeeks.length === 0) return;
+
+  const roi = sortedWeeks.map(w => {
+    const t = completedByWeek[w] || 0;
+    const i = wipByWeek[w] || 0;
+    return i > 0 ? Math.round(t / i * 100) / 100 : 0;
+  });
+
+  new Chart(document.getElementById('chart-toc-roi'), {
+    type: 'line',
+    data: {
+      labels: sortedWeeks,
+      datasets: [{ label: 'T/I ratio', data: roi, borderColor: '#58a6ff', backgroundColor: '#58a6ff22', fill: true, tension: 0.3, pointRadius: 2 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Week' } },
+        y: { beginAtZero: true, title: { display: true, text: 'T / I' } },
+      },
+    }
+  });
+}
+
+function renderTocCashFlow(tasks) {
+  const { sortedWeeks, startedByWeek, completedByWeek } = tocWeeklyData(tasks, null);
+  if (sortedWeeks.length === 0) return;
+
+  let cumulative = 0;
+  const cfData = sortedWeeks.map(w => {
+    const completed = completedByWeek[w] || 0;
+    const started = startedByWeek[w] || 0;
+    cumulative += (completed - started);
+    return cumulative;
+  });
+
+  new Chart(document.getElementById('chart-toc-cf'), {
+    type: 'line',
+    data: {
+      labels: sortedWeeks,
+      datasets: [{
+        label: 'Cumulative net flow',
+        data: cfData,
+        borderColor: '#a371f7',
+        backgroundColor: '#a371f722',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Week' } },
+        y: { title: { display: true, text: 'Completed - Started (cumulative)' } },
       },
     }
   });
