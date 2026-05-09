@@ -149,7 +149,7 @@ def aggregate(tasks):
 
 def main():
     roam_dir = sys.argv[1] if len(sys.argv) > 1 else "."
-    output = sys.argv[2] if len(sys.argv) > 2 else "public/workflow-data.json"
+    output = sys.argv[2] if len(sys.argv) > 2 else "frontend/public/workflow-data.json"
     tasks = parse_all(roam_dir)
     data = aggregate(tasks)
     with open(output, "w", encoding="utf-8") as f:

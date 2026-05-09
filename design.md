@@ -21,8 +21,48 @@ org-modeでタスク管理している。単に時間を記録しているだけ
 - リードタイム = 最初のクロックインの日付 〜 最後のクロックアウトの日付(日数)
 - 対象: 最後のクロックインが直近3ヶ月以内のタスク
 
+## フロントエンド構成
+
+- Vite + React + TypeScript の SPA
+- Recharts でチャート描画
+- React Router でページ遷移
+- 集計の時間単位(週/月)を切り替え可能
+
 ## パイプライン
 
-1. Python スクリプト (`scripts/parse_workflow.py`) が全 org ファイルをパース
-2. JSON (`public/workflow-data.json`) を出力
-3. HTML ダッシュボード (`public/index.html`) が JSON を読んで可視化
+1. `scripts/parse_workflow.py` が全 org ファイルをパース → `frontend/public/workflow-data.json`
+2. `scripts/parse_draft.py` が draft タグを解析 → `frontend/public/draft-data.json`
+3. Vite ビルドで SPA を生成 → GitHub Pages にデプロイ
+
+## ページ構成
+
+### Tasks (`/`)
+
+タスクのリードタイム・WIP・スループット等の可視化。週/月切替対応。
+
+1. リードタイム棒グラフ
+2. リードタイム vs 作業時間の散布図
+3. WIPトレンド
+4. スループット
+5. リードタイム分布ヒストグラム
+6. フロー効率
+7. エイジングWIP
+8. 累積フロー図(CFD)
+9. ガントチャート
+10. バーンチャート
+11. 日別タスク別作業時間
+12. 純利益トレンド (T - OE)
+13. 投資収益率 (T/I)
+14. キャッシュフロー
+15. 滞留アラート一覧
+16. ファイル別集計テーブル
+17. タスク一覧テーブル
+
+### Draft (`/draft`)
+
+draftタグのリードタイム可視化。ファイル作成日〜draft除去日を計測。
+
+1. 公開済みリードタイム棒グラフ
+2. Draft vs Published 散布図
+3. 下書き経過日数
+4. 一覧テーブル
