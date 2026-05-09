@@ -37,20 +37,15 @@ export function HistogramChart({ tasks }: Props) {
   }, [tasks]);
 
   return (
-    <div className="card">
-      <h3>Lead Time Distribution</h3>
-      <p className="desc">
-        完了タスクのリードタイム分布(ヒストグラム)。中央値や外れ値が一目でわかる
-      </p>
-      <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="range" stroke="#8b949e" label={{ value: "days", position: "insideBottom", offset: -5 }} />
-          <YAxis stroke="#8b949e" allowDecimals={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="range" stroke="#A0AEC0" label={{ value: "days", position: "insideBottom", offset: -5 }} />
+          <YAxis stroke="#A0AEC0" allowDecimals={false} />
           <Tooltip
             contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
             }}
           />
           <Bar
@@ -60,6 +55,5 @@ export function HistogramChart({ tasks }: Props) {
           />
         </BarChart>
       </ResponsiveContainer>
-    </div>
   );
 }

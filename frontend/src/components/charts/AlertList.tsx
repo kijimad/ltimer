@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Box, Text } from "@chakra-ui/react";
 import type { Task } from "../../types/index.ts";
 import { shortName } from "../../hooks/usePeriodKey.ts";
 
@@ -14,40 +15,35 @@ export function AlertList({ tasks }: Props) {
   }, [tasks]);
 
   return (
-    <div className="card">
-      <h3>Alerts</h3>
-      <p className="desc">
-        TODO状態かつリードタイム30日超のタスクを警告表示。長期間放置されているタスクの棚卸しに使う
-      </p>
+    <>
       {alerts.length === 0 ? (
-        <p style={{ color: "#8b949e" }}>No alerts</p>
+        <Text color="gray.500">No alerts</Text>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        <Box>
           {alerts.map((t, i) => (
-            <li
+            <Box
               key={i}
-              style={{
-                padding: "8px 12px",
-                borderBottom: "1px solid #21262d",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+              padding="8px 12px"
+              borderBottom="1px solid"
+              borderColor="gray.100"
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
             >
-              <div>
-                <span style={{ color: "#f85149", fontWeight: "bold" }}>
+              <Box>
+                <Text as="span" color="#f85149" fontWeight="bold">
                   {t.lead_time_days}d
-                </span>{" "}
-                <span style={{ color: "#c9d1d9" }}>{t.title}</span>
+                </Text>{" "}
+                <Text as="span" color="gray.800">{t.title}</Text>
                 <br />
-                <small style={{ color: "#8b949e" }}>
+                <Text as="span" fontSize="sm" color="gray.500">
                   {shortName(t.file)}
-                </small>
-              </div>
-            </li>
+                </Text>
+              </Box>
+            </Box>
           ))}
-        </ul>
+        </Box>
       )}
-    </div>
+    </>
   );
 }

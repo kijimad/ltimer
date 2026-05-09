@@ -60,20 +60,15 @@ export function CfdChart({ tasks, unit }: Props) {
   }, [tasks, unit]);
 
   return (
-    <div className="card full">
-      <h3>Cumulative Flow Diagram</h3>
-      <p className="desc">
-        週/月ごとのStarted/Completed/Closedの累積数を積み上げ面グラフで表示。バンド(帯)の幅がWIP量を示し、広がっていれば仕掛かりが増加している
-      </p>
-      <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={350}>
         <AreaChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="period" stroke="#8b949e" />
-          <YAxis stroke="#8b949e" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="period" stroke="#A0AEC0" />
+          <YAxis stroke="#A0AEC0" />
           <Tooltip
             contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
             }}
           />
           <Legend />
@@ -103,6 +98,5 @@ export function CfdChart({ tasks, unit }: Props) {
           />
         </AreaChart>
       </ResponsiveContainer>
-    </div>
   );
 }

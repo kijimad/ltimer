@@ -1,16 +1,51 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { Flex, Box } from "@chakra-ui/react";
 
 export function Layout() {
   return (
     <>
-      <nav className="nav">
-        <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-          Tasks
+      <Flex
+        as="nav"
+        direction="row"
+        align="center"
+        gap={6}
+        px={5}
+        py={3}
+        borderBottom="1px solid"
+        borderColor="gray.200"
+        bg="white"
+      >
+        <NavLink to="/" end style={{ textDecoration: "none" }}>
+          {({ isActive }) => (
+            <Box
+              color={isActive ? "gray.800" : "gray.500"}
+              borderBottom={isActive ? "2px solid" : "2px solid transparent"}
+              borderColor={isActive ? "blue.500" : "transparent"}
+              pb={1}
+              fontSize="sm"
+              fontWeight="medium"
+              _hover={{ color: "gray.800" }}
+            >
+              Tasks
+            </Box>
+          )}
         </NavLink>
-        <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
-          Draft
+        <NavLink to="/draft" style={{ textDecoration: "none" }}>
+          {({ isActive }) => (
+            <Box
+              color={isActive ? "gray.800" : "gray.500"}
+              borderBottom={isActive ? "2px solid" : "2px solid transparent"}
+              borderColor={isActive ? "blue.500" : "transparent"}
+              pb={1}
+              fontSize="sm"
+              fontWeight="medium"
+              _hover={{ color: "gray.800" }}
+            >
+              Draft
+            </Box>
+          )}
         </NavLink>
-      </nav>
+      </Flex>
       <Outlet />
     </>
   );

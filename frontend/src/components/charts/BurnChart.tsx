@@ -51,21 +51,16 @@ export function BurnChart({ tasks }: Props) {
   }, [tasks]);
 
   return (
-    <div className="card full">
-      <h3>Burn Chart</h3>
-      <p className="desc">
-        日ごとの累積Started/Completed数とWIP数を表示。Started-Completedの差がWIP。二つの線が離れるほど仕掛かりが溜まっている
-      </p>
-      <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={350}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="date" stroke="#8b949e" />
-          <YAxis yAxisId="left" stroke="#8b949e" />
-          <YAxis yAxisId="right" orientation="right" stroke="#8b949e" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="date" stroke="#A0AEC0" />
+          <YAxis yAxisId="left" stroke="#A0AEC0" />
+          <YAxis yAxisId="right" orientation="right" stroke="#A0AEC0" />
           <Tooltip
             contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
             }}
           />
           <Legend />
@@ -93,6 +88,5 @@ export function BurnChart({ tasks }: Props) {
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
   );
 }

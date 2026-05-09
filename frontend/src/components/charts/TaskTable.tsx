@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Badge, Box, Table } from "@chakra-ui/react";
 import type { Task } from "../../types/index.ts";
 import { shortName } from "../../hooks/usePeriodKey.ts";
 
@@ -39,55 +40,49 @@ export function TaskTable({ tasks }: Props) {
   };
 
   const th = (label: string, key: SortKey) => (
-    <th
+    <Table.ColumnHeader
       style={{ cursor: "pointer", userSelect: "none" }}
       onClick={() => handleSort(key)}
     >
       {label}
       {sortKey === key ? (asc ? " ▲" : " ▼") : ""}
-    </th>
+    </Table.ColumnHeader>
   );
 
   return (
-    <div className="card full">
-      <h3>Task Details</h3>
-      <p className="desc">
-        全タスクの詳細一覧。タスク名、ファイル、ステータス、リードタイム、作業時間、セッション数。ヘッダクリックでソート
-      </p>
-      <div style={{ overflowX: "auto" }}>
-        <table>
-          <thead>
-            <tr>
-              {th("Task", "title")}
-              {th("File", "file")}
-              {th("Status", "status")}
-              {th("Lead Time(d)", "lead_time_days")}
-              {th("Work(min)", "total_minutes")}
-              {th("Sessions", "clock_count")}
-              {th("Start", "first_clock_in")}
-              {th("Last", "last_clock_out")}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((t, i) => (
-              <tr key={i}>
-                <td>{t.title}</td>
-                <td>{shortName(t.file)}</td>
-                <td>
-                  <span className={`status-${t.status.toLowerCase()}`}>
-                    {t.status}
-                  </span>
-                </td>
-                <td>{t.lead_time_days}</td>
-                <td>{t.total_minutes}</td>
-                <td>{t.clock_count}</td>
-                <td>{t.first_clock_in.slice(0, 10)}</td>
-                <td>{t.last_clock_out.slice(0, 10)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <Box overflowX="auto">
+      <Table.Root size="sm">
+        <Table.Header>
+          <Table.Row>
+            {th("Task", "title")}
+            {th("File", "file")}
+            {th("Status", "status")}
+            {th("Lead Time(d)", "lead_time_days")}
+            {th("Work(min)", "total_minutes")}
+            {th("Sessions", "clock_count")}
+            {th("Start", "first_clock_in")}
+            {th("Last", "last_clock_out")}
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {sorted.map((t, i) => (
+            <Table.Row key={i}>
+              <Table.Cell>{t.title}</Table.Cell>
+              <Table.Cell>{shortName(t.file)}</Table.Cell>
+              <Table.Cell>
+                <Badge colorPalette={t.status === "TODO" ? "orange" : t.status === "DONE" ? "green" : "purple"}>
+                  {t.status}
+                </Badge>
+              </Table.Cell>
+              <Table.Cell>{t.lead_time_days}</Table.Cell>
+              <Table.Cell>{t.total_minutes}</Table.Cell>
+              <Table.Cell>{t.clock_count}</Table.Cell>
+              <Table.Cell>{t.first_clock_in.slice(0, 10)}</Table.Cell>
+              <Table.Cell>{t.last_clock_out.slice(0, 10)}</Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table.Root>
+    </Box>
   );
 }

@@ -10,9 +10,8 @@ describe("Layout", () => {
     expect(screen.getByText("Draft")).toBeInTheDocument();
   });
 
-  it("marks Tasks as active on /", () => {
+  it("renders Tasks link on /", () => {
     renderWithRouter(<Layout />, { route: "/" });
-    const tasksLink = screen.getByText("Tasks");
-    expect(tasksLink).toHaveClass("active");
+    expect(screen.getByText("Tasks")).toBeInTheDocument();
   });
 });

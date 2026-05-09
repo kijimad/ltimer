@@ -54,30 +54,24 @@ export function RoiChart({ tasks, unit }: Props) {
   }, [tasks, unit]);
 
   return (
-    <div className="card full">
-      <h3>ROI (T / I)</h3>
-      <p className="desc">
-        投資収益率 = スループット(T) / 在庫(I)。週/月あたり完了数÷WIP数。高いほど仕掛かり在庫が効率的にスループットへ変換されている。低い週はWIPが多すぎる兆候
-      </p>
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="period" stroke="#8b949e" />
-          <YAxis stroke="#8b949e" />
-          <Tooltip
-            contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="ROI"
-            stroke="#58a6ff"
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="period" stroke="#A0AEC0" />
+        <YAxis stroke="#A0AEC0" />
+        <Tooltip
+          contentStyle={{
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+          }}
+        />
+        <Line
+          type="monotone"
+          dataKey="ROI"
+          stroke="#58a6ff"
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }

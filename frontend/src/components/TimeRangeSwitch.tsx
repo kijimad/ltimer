@@ -1,4 +1,5 @@
 import type { TimeRange } from "../types/index.ts";
+import { HStack, Text, Button } from "@chakra-ui/react";
 
 const OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "1w", label: "前週" },
@@ -15,17 +16,19 @@ export function TimeRangeSwitch({
   onChange: (r: TimeRange) => void;
 }) {
   return (
-    <div className="controls">
-      <span style={{ fontSize: "0.8rem", color: "#8b949e" }}>集計範囲:</span>
+    <HStack gap={3} mb={4}>
+      <Text fontSize="xs" color="gray.500">集計範囲:</Text>
       {OPTIONS.map((o) => (
-        <button
+        <Button
           key={o.value}
-          className={range === o.value ? "active" : ""}
+          size="xs"
+          variant={range === o.value ? "solid" : "outline"}
+          colorPalette="blue"
           onClick={() => onChange(o.value)}
         >
           {o.label}
-        </button>
+        </Button>
       ))}
-    </div>
+    </HStack>
   );
 }

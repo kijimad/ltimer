@@ -23,31 +23,25 @@ export function AgingWip({ tasks }: Props) {
   }, [tasks]);
 
   return (
-    <div className="card full">
-      <h2>Aging WIP</h2>
-      <p className="desc">
-        現在TODOのタスクが最初のクロックインから何日経過しているか。30日超は赤色で警告
-      </p>
-      <ResponsiveContainer width="100%" height={Math.max(200, data.length * 28)}>
-        <BarChart data={data} layout="vertical" margin={{ left: 120 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis type="number" stroke="#8b949e" unit=" d" />
-          <YAxis type="category" dataKey="title" stroke="#8b949e" width={110} tick={{ fontSize: 11 }} />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (!active || !payload?.[0]) return null;
-              const d = payload[0].payload;
-              return (
-                <div style={{ background: "#161b22", border: "1px solid #30363d", padding: 8, fontSize: 12 }}>
-                  <div>{d.title}</div>
-                  <div>{d.days} days</div>
-                </div>
-              );
-            }}
-          />
-          <Bar dataKey="days" isAnimationActive={false} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height={Math.max(200, data.length * 28)}>
+      <BarChart data={data} layout="vertical" margin={{ left: 120 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis type="number" stroke="#A0AEC0" unit=" d" />
+        <YAxis type="category" dataKey="title" stroke="#A0AEC0" width={110} tick={{ fontSize: 11 }} />
+        <Tooltip
+          content={({ active, payload }) => {
+            if (!active || !payload?.[0]) return null;
+            const d = payload[0].payload;
+            return (
+              <div style={{ background: "#fff", border: "1px solid #e2e8f0", padding: 8, fontSize: 12 }}>
+                <div>{d.title}</div>
+                <div>{d.days} days</div>
+              </div>
+            );
+          }}
+        />
+        <Bar dataKey="days" isAnimationActive={false} />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }

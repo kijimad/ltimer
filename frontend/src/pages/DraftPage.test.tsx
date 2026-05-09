@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { screen, waitFor } from "@testing-library/react";
 import { DraftPage } from "./DraftPage.tsx";
 import { DRAFT_DATA } from "../test/fixtures.ts";
+import { renderWithRouter } from "../test/render.tsx";
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -12,22 +12,14 @@ beforeEach(() => {
 
 describe("DraftPage", () => {
   it("renders page title after load", async () => {
-    render(
-      <MemoryRouter>
-        <DraftPage />
-      </MemoryRouter>
-    );
+    renderWithRouter(<DraftPage />);
     await waitFor(() => {
       expect(screen.getByText("Draft Lead Time")).toBeInTheDocument();
     });
   });
 
   it("shows draft and published entries in table", async () => {
-    render(
-      <MemoryRouter>
-        <DraftPage />
-      </MemoryRouter>
-    );
+    renderWithRouter(<DraftPage />);
     await waitFor(() => {
       expect(screen.getByText("Draft article")).toBeInTheDocument();
       expect(screen.getByText("Published essay")).toBeInTheDocument();
@@ -35,11 +27,7 @@ describe("DraftPage", () => {
   });
 
   it("shows status labels", async () => {
-    render(
-      <MemoryRouter>
-        <DraftPage />
-      </MemoryRouter>
-    );
+    renderWithRouter(<DraftPage />);
     await waitFor(() => {
       expect(screen.getByText("draft")).toBeInTheDocument();
       expect(screen.getByText("published")).toBeInTheDocument();
@@ -47,11 +35,7 @@ describe("DraftPage", () => {
   });
 
   it("shows lead time for published entries", async () => {
-    render(
-      <MemoryRouter>
-        <DraftPage />
-      </MemoryRouter>
-    );
+    renderWithRouter(<DraftPage />);
     await waitFor(() => {
       expect(screen.getByText("45")).toBeInTheDocument();
     });

@@ -4,6 +4,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ScatterChart as RechartsScatter, Scatter, CartesianGrid,
 } from "recharts";
+import {
+  Box, Heading, Text, SimpleGrid, Table, Badge,
+} from "@chakra-ui/react";
 
 export function DraftPage() {
   const { data, error } = useDraftData();
@@ -32,8 +35,8 @@ export function DraftPage() {
     });
   }, [data, sortKey, sortDir]);
 
-  if (error) return <div className="page">Error: {error}</div>;
-  if (!data) return <div className="page">Loading...</div>;
+  if (error) return <Box p={5}>Error: {error}</Box>;
+  if (!data) return <Box p={5}>Loading...</Box>;
 
   const published = data.entries.filter((e) => e.status === "published" && e.lead_time_days != null);
   const drafts = data.entries.filter((e) => e.status === "draft");
@@ -57,40 +60,40 @@ export function DraftPage() {
   }).sort((a, b) => b.days - a.days);
 
   return (
-    <div className="page">
-      <h1>Draft Lead Time</h1>
-      <p className="meta">Generated: {data.generated_at.slice(0, 16)}</p>
+    <Box p={5}>
+      <Heading size="lg" color="blue.600" mb={1}>Draft Lead Time</Heading>
+      <Text fontSize="xs" color="gray.400" mb={5}>Generated: {data.generated_at.slice(0, 16)}</Text>
 
-      <div className="grid">
+      <SimpleGrid columns={{ base: 1, md: 2 }} gap={5} mb={5}>
         {barData.length > 0 && (
-          <div className="card full">
-            <h2>公開済みリードタイム (days)</h2>
-            <p className="desc">
+          <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4} gridColumn="1 / -1">
+            <Heading size="sm" color="gray.700" borderBottom="1px solid" borderColor="gray.100" pb={1} mb={2}>公開済みリードタイム (days)</Heading>
+            <Text fontSize="xs" color="gray.400" mb={3} lineHeight="tall">
               draftタグ付与から公開(draftタグ除去)までの日数を降順表示。下書き期間が長いほど公開に至るまでの障壁が大きい
-            </p>
+            </Text>
             <ResponsiveContainer width="100%" height={Math.max(200, barData.length * 28)}>
               <BarChart data={barData} layout="vertical" margin={{ left: 120 }}>
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} />
+                <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0" }} />
                 <Bar dataKey="days" fill="#3fb950" isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </Box>
         )}
 
         {scatterData.length > 0 && (
-          <div className="card">
-            <h2>Draft vs Published</h2>
-            <p className="desc">
+          <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+            <Heading size="sm" color="gray.700" borderBottom="1px solid" borderColor="gray.100" pb={1} mb={2}>Draft vs Published</Heading>
+            <Text fontSize="xs" color="gray.400" mb={3} lineHeight="tall">
               公開済みと下書き中のリードタイム分布。下書き中のものが長期化していないか確認する
-            </p>
+            </Text>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsScatter margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis type="number" dataKey="leadTime" name="Lead Time" unit="d" />
                 <YAxis type="category" dataKey="status" />
-                <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} />
+                <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0" }} />
                 <Scatter
                   data={scatterData.filter((d) => d.status === "published")}
                   fill="#3fb950"
@@ -103,20 +106,20 @@ export function DraftPage() {
                 />
               </RechartsScatter>
             </ResponsiveContainer>
-          </div>
+          </Box>
         )}
 
         {draftAging.length > 0 && (
-          <div className="card">
-            <h2>下書き経過日数</h2>
-            <p className="desc">
+          <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+            <Heading size="sm" color="gray.700" borderBottom="1px solid" borderColor="gray.100" pb={1} mb={2}>下書き経過日数</Heading>
+            <Text fontSize="xs" color="gray.400" mb={3} lineHeight="tall">
               現在draftタグが付いているファイルの経過日数。長期間下書きのまま放置されているものを特定する
-            </p>
+            </Text>
             <ResponsiveContainer width="100%" height={Math.max(200, draftAging.length * 28)}>
               <BarChart data={draftAging} layout="vertical" margin={{ left: 120 }}>
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} />
+                <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0" }} />
                 <Bar
                   dataKey="days"
                   isAnimationActive={false}
@@ -124,38 +127,38 @@ export function DraftPage() {
                 />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </Box>
         )}
 
-        <div className="card full">
-          <h2>一覧</h2>
-          <p className="desc">全draftエントリの詳細。ヘッダクリックでソート</p>
-          <table>
-            <thead>
-              <tr>
-                <th onClick={() => handleSort("title")}>Title</th>
-                <th onClick={() => handleSort("file")}>File</th>
-                <th onClick={() => handleSort("status")}>Status</th>
-                <th onClick={() => handleSort("created")}>Created</th>
-                <th onClick={() => handleSort("published")}>Published</th>
-                <th onClick={() => handleSort("lead_time_days")}>Lead Time (d)</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4} gridColumn="1 / -1">
+          <Heading size="sm" color="gray.700" borderBottom="1px solid" borderColor="gray.100" pb={1} mb={2}>一覧</Heading>
+          <Text fontSize="xs" color="gray.400" mb={3} lineHeight="tall">全draftエントリの詳細。ヘッダクリックでソート</Text>
+          <Table.Root size="sm">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader cursor="pointer" onClick={() => handleSort("title")}>Title</Table.ColumnHeader>
+                <Table.ColumnHeader cursor="pointer" onClick={() => handleSort("file")}>File</Table.ColumnHeader>
+                <Table.ColumnHeader cursor="pointer" onClick={() => handleSort("status")}>Status</Table.ColumnHeader>
+                <Table.ColumnHeader cursor="pointer" onClick={() => handleSort("created")}>Created</Table.ColumnHeader>
+                <Table.ColumnHeader cursor="pointer" onClick={() => handleSort("published")}>Published</Table.ColumnHeader>
+                <Table.ColumnHeader cursor="pointer" onClick={() => handleSort("lead_time_days")}>Lead Time (d)</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {sorted.map((e, i) => (
-                <tr key={i}>
-                  <td className="truncate">{e.title}</td>
-                  <td className="truncate">{e.file}</td>
-                  <td className={`status-${e.status}`}>{e.status}</td>
-                  <td>{e.created.slice(0, 10)}</td>
-                  <td>{e.published?.slice(0, 10) ?? ""}</td>
-                  <td>{e.lead_time_days ?? ""}</td>
-                </tr>
+                <Table.Row key={i}>
+                  <Table.Cell maxW="250px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{e.title}</Table.Cell>
+                  <Table.Cell maxW="250px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{e.file}</Table.Cell>
+                  <Table.Cell><Badge colorPalette={e.status === "published" ? "green" : "orange"}>{e.status}</Badge></Table.Cell>
+                  <Table.Cell>{e.created.slice(0, 10)}</Table.Cell>
+                  <Table.Cell>{e.published?.slice(0, 10) ?? ""}</Table.Cell>
+                  <Table.Cell>{e.lead_time_days ?? ""}</Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+            </Table.Body>
+          </Table.Root>
+        </Box>
+      </SimpleGrid>
+    </Box>
   );
 }

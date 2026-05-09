@@ -32,20 +32,15 @@ export function ThroughputChart({ tasks, unit }: Props) {
   }, [tasks, unit]);
 
   return (
-    <div className="card full">
-      <h3>Throughput</h3>
-      <p className="desc">
-        週/月ごとのDONE完了数。改善が進んでいるか、スループットが安定しているかを確認する
-      </p>
-      <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="period" stroke="#8b949e" />
-          <YAxis stroke="#8b949e" allowDecimals={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="period" stroke="#A0AEC0" />
+          <YAxis stroke="#A0AEC0" allowDecimals={false} />
           <Tooltip
             contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
             }}
           />
           <Bar
@@ -55,6 +50,5 @@ export function ThroughputChart({ tasks, unit }: Props) {
           />
         </BarChart>
       </ResponsiveContainer>
-    </div>
   );
 }

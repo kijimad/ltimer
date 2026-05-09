@@ -47,31 +47,25 @@ export function CashFlowChart({ tasks, unit }: Props) {
   }, [tasks, unit]);
 
   return (
-    <div className="card full">
-      <h3>Cash Flow (TOC)</h3>
-      <p className="desc">
-        週/月ごとの(完了数 - 新規着手数)を累積表示。右肩上がりなら在庫が減りスループットが勝っている健全な状態。右肩下がりなら着手過多で在庫が膨らんでいる
-      </p>
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="period" stroke="#8b949e" />
-          <YAxis stroke="#8b949e" />
-          <Tooltip
-            contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
-            }}
-          />
-          <ReferenceLine y={0} stroke="#484f58" />
-          <Line
-            type="monotone"
-            dataKey="CashFlow"
-            stroke="#3fb950"
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="period" stroke="#A0AEC0" />
+        <YAxis stroke="#A0AEC0" />
+        <Tooltip
+          contentStyle={{
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+          }}
+        />
+        <ReferenceLine y={0} stroke="#CBD5E0" />
+        <Line
+          type="monotone"
+          dataKey="CashFlow"
+          stroke="#3fb950"
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }

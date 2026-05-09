@@ -24,22 +24,17 @@ export function ScatterChart({ tasks }: Props) {
   }));
 
   return (
-    <div className="card full">
-      <h2>Lead Time vs Work Time</h2>
-      <p className="desc">
-        横軸がリードタイム(日)、縦軸が実作業時間(分)。右下に位置するタスクは「長期間かかっているが実作業が少ない」=滞留している
-      </p>
-      <ResponsiveContainer width="100%" height={400}>
+    <ResponsiveContainer width="100%" height={400}>
         <ReScatter>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis type="number" dataKey="x" name="Lead Time (days)" stroke="#8b949e" />
-          <YAxis type="number" dataKey="y" name="Work Time (min)" stroke="#8b949e" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis type="number" dataKey="x" name="Lead Time (days)" stroke="#A0AEC0" />
+          <YAxis type="number" dataKey="y" name="Work Time (min)" stroke="#A0AEC0" />
           <Tooltip
             content={({ active, payload }) => {
               if (!active || !payload?.[0]) return null;
               const d = payload[0].payload;
               return (
-                <div style={{ background: "#161b22", border: "1px solid #30363d", padding: 8, fontSize: 12 }}>
+                <div style={{ background: "#fff", border: "1px solid #e2e8f0", padding: 8, fontSize: 12 }}>
                   <div>{d.title}</div>
                   <div>{d.x}d / {d.y}min</div>
                 </div>
@@ -52,6 +47,5 @@ export function ScatterChart({ tasks }: Props) {
           ))}
         </ReScatter>
       </ResponsiveContainer>
-    </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Box, Table } from "@chakra-ui/react";
 import type { Task } from "../../types/index.ts";
 import { shortName } from "../../hooks/usePeriodKey.ts";
 
@@ -65,51 +66,45 @@ export function FileTable({ tasks }: Props) {
   };
 
   const th = (label: string, key: SortKey) => (
-    <th
+    <Table.ColumnHeader
       style={{ cursor: "pointer", userSelect: "none" }}
       onClick={() => handleSort(key)}
     >
       {label}
       {sortKey === key ? (asc ? " ▲" : " ▼") : ""}
-    </th>
+    </Table.ColumnHeader>
   );
 
   return (
-    <div className="card full">
-      <h3>File Summary</h3>
-      <p className="desc">
-        ファイルごとのタスク数、TODO/DONE/CLOSE内訳、合計作業時間、平均・最大リードタイム。ヘッダクリックでソート
-      </p>
-      <div style={{ overflowX: "auto" }}>
-        <table>
-          <thead>
-            <tr>
-              {th("File", "display")}
-              {th("Tasks", "total")}
-              {th("TODO", "todo")}
-              {th("DONE", "done")}
-              {th("CLOSE", "close")}
-              {th("Work(min)", "work")}
-              {th("Avg Lead(d)", "avgLead")}
-              {th("Max Lead(d)", "maxLead")}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((r) => (
-              <tr key={r.file}>
-                <td>{r.display}</td>
-                <td>{r.total}</td>
-                <td>{r.todo}</td>
-                <td>{r.done}</td>
-                <td>{r.close}</td>
-                <td>{r.work}</td>
-                <td>{r.avgLead}</td>
-                <td>{r.maxLead}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <Box overflowX="auto">
+      <Table.Root size="sm">
+        <Table.Header>
+          <Table.Row>
+            {th("File", "display")}
+            {th("Tasks", "total")}
+            {th("TODO", "todo")}
+            {th("DONE", "done")}
+            {th("CLOSE", "close")}
+            {th("Work(min)", "work")}
+            {th("Avg Lead(d)", "avgLead")}
+            {th("Max Lead(d)", "maxLead")}
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {sorted.map((r) => (
+            <Table.Row key={r.file}>
+              <Table.Cell>{r.display}</Table.Cell>
+              <Table.Cell>{r.total}</Table.Cell>
+              <Table.Cell>{r.todo}</Table.Cell>
+              <Table.Cell>{r.done}</Table.Cell>
+              <Table.Cell>{r.close}</Table.Cell>
+              <Table.Cell>{r.work}</Table.Cell>
+              <Table.Cell>{r.avgLead}</Table.Cell>
+              <Table.Cell>{r.maxLead}</Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table.Root>
+    </Box>
   );
 }

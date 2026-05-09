@@ -36,20 +36,15 @@ export function WipTrend({ tasks, unit }: Props) {
   }, [tasks, unit]);
 
   return (
-    <div className="card full">
-      <h3>WIP Trend</h3>
-      <p className="desc">
-        週/月ごとの仕掛かり(WIP)数の推移。WIPが増え続けていれば着手過多でボトルネックの兆候
-      </p>
-      <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="period" stroke="#8b949e" />
-          <YAxis stroke="#8b949e" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="period" stroke="#A0AEC0" />
+          <YAxis stroke="#A0AEC0" />
           <Tooltip
             contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
             }}
           />
           <Line
@@ -60,6 +55,5 @@ export function WipTrend({ tasks, unit }: Props) {
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
   );
 }

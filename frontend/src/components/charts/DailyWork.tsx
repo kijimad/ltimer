@@ -36,20 +36,15 @@ export function DailyWork({ dailyWork }: Props) {
   }, [dailyWork]);
 
   return (
-    <div className="card full">
-      <h3>Daily Work</h3>
-      <p className="desc">
-        日ごとにどのタスクに何分投入したかをスタック棒グラフで表示。作業配分のばらつきやマルチタスクの度合いを確認できる
-      </p>
-      <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={350}>
         <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="date" stroke="#8b949e" />
-          <YAxis stroke="#8b949e" unit=" min" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="date" stroke="#A0AEC0" />
+          <YAxis stroke="#A0AEC0" unit=" min" />
           <Tooltip
             contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
             }}
           />
           <Legend />
@@ -64,6 +59,5 @@ export function DailyWork({ dailyWork }: Props) {
           ))}
         </BarChart>
       </ResponsiveContainer>
-    </div>
   );
 }

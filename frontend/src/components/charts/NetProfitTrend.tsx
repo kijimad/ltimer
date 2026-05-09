@@ -48,21 +48,16 @@ export function NetProfitTrend({ tasks, unit, dailyWork }: Props) {
   }, [tasks, unit, dailyWork]);
 
   return (
-    <div className="card full">
-      <h3>Net Profit (TOC)</h3>
-      <p className="desc">
-        純利益 = スループット(T) - 業務費用(OE)。緑棒が週/月あたり完了タスク数(T)、赤線が投入作業時間(OE)。Tが増えつつOEが減るのが理想。OEが高いのにTが低い週は非効率
-      </p>
-      <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
-          <XAxis dataKey="period" stroke="#8b949e" />
-          <YAxis yAxisId="left" stroke="#8b949e" label={{ value: "Tasks", angle: -90, position: "insideLeft" }} />
-          <YAxis yAxisId="right" orientation="right" stroke="#8b949e" label={{ value: "Hours", angle: 90, position: "insideRight" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="period" stroke="#A0AEC0" />
+          <YAxis yAxisId="left" stroke="#A0AEC0" label={{ value: "Tasks", angle: -90, position: "insideLeft" }} />
+          <YAxis yAxisId="right" orientation="right" stroke="#A0AEC0" label={{ value: "Hours", angle: 90, position: "insideRight" }} />
           <Tooltip
             contentStyle={{
-              background: "#161b22",
-              border: "1px solid #30363d",
+              background: "#fff",
+              border: "1px solid #e2e8f0",
             }}
           />
           <Legend />
@@ -81,6 +76,5 @@ export function NetProfitTrend({ tasks, unit, dailyWork }: Props) {
           />
         </ComposedChart>
       </ResponsiveContainer>
-    </div>
   );
 }
