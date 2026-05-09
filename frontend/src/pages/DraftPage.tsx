@@ -7,9 +7,12 @@ import {
 import {
   Box, Heading, Text, SimpleGrid, Table, Badge,
 } from "@chakra-ui/react";
+import { useTimeRange, rangeStartDate } from "../hooks/useTimeRange.ts";
+import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 
 export function DraftPage() {
   const { data, error } = useDraftData();
+  const { range, setRange } = useTimeRange();
   const [sortKey, setSortKey] = useState<string>("lead_time_days");
   const [sortDir, setSortDir] = useState(-1);
 
@@ -22,9 +25,18 @@ export function DraftPage() {
     }
   };
 
+  const filtered = useMemo(() => {
+    if (!data) return null;
+    const cutoff = rangeStartDate(range).toISOString().slice(0, 10);
+    const entries = data.entries.filter(
+      (e) => e.created >= cutoff || (e.published && e.published >= cutoff)
+    );
+    return entries;
+  }, [data, range]);
+
   const sorted = useMemo(() => {
-    if (!data) return [];
-    return [...data.entries].sort((a, b) => {
+    if (!filtered) return [];
+    return [...filtered].sort((a, b) => {
       const va = a[sortKey as keyof typeof a];
       const vb = b[sortKey as keyof typeof b];
       if (va == null && vb == null) return 0;
@@ -33,13 +45,13 @@ export function DraftPage() {
       if (typeof va === "number" && typeof vb === "number") return (va - vb) * sortDir;
       return String(va).localeCompare(String(vb)) * sortDir;
     });
-  }, [data, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
-  if (!data) return <Box p={5}>Loading...</Box>;
+  if (!data || !filtered) return <Box p={5}>Loading...</Box>;
 
-  const published = data.entries.filter((e) => e.status === "published" && e.lead_time_days != null);
-  const drafts = data.entries.filter((e) => e.status === "draft");
+  const published = filtered.filter((e) => e.status === "published" && e.lead_time_days != null);
+  const drafts = filtered.filter((e) => e.status === "draft");
 
   const barData = [...published]
     .sort((a, b) => (b.lead_time_days ?? 0) - (a.lead_time_days ?? 0))
@@ -48,7 +60,7 @@ export function DraftPage() {
       days: e.lead_time_days,
     }));
 
-  const scatterData = data.entries.map((e) => ({
+  const scatterData = filtered.map((e) => ({
     title: e.title,
     leadTime: e.lead_time_days ?? 0,
     status: e.status,
@@ -62,7 +74,10 @@ export function DraftPage() {
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Draft Lead Time</Heading>
-      <Text fontSize="xs" color="gray.400" mb={5}>Generated: {data.generated_at.slice(0, 16)}</Text>
+      <Text fontSize="xs" color="gray.400" mb={5}>
+        Generated: {data.generated_at.slice(0, 16)} | Cutoff: {rangeStartDate(range).toISOString().slice(0, 10)}
+      </Text>
+      <TimeRangeSwitch range={range} onChange={setRange} />
 
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={5} mb={5}>
         {barData.length > 0 && (

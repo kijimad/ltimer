@@ -4,7 +4,7 @@ import { useWorkflowData } from "../hooks/useWorkflowData.ts";
 import { useTimeRange, rangeStartDate, unitForRange } from "../hooks/useTimeRange.ts";
 import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
-import { CHARTS } from "../chartConfig.tsx";
+import { CHART_GROUPS } from "../chartConfig.tsx";
 
 export function TasksPage() {
   const { data, error } = useWorkflowData();
@@ -34,13 +34,20 @@ export function TasksPage() {
         Generated: {data.generated_at.slice(0, 16)} | Cutoff: {data.cutoff_date}
       </Text>
       <TimeRangeSwitch range={range} onChange={setRange} />
-      <SimpleGrid columns={{ base: 1, md: 2 }} gap={5} mb={5}>
-        {CHARTS.map((c) => (
-          <ChartCard key={c.key} title={c.title} desc={c.desc} full={c.full}>
-            {c.render(chartProps)}
-          </ChartCard>
-        ))}
-      </SimpleGrid>
+      {CHART_GROUPS.map((group) => (
+        <Box key={group.key} mb={8}>
+          <Heading size="md" color="gray.600" mb={3} pb={1} borderBottom="1px solid" borderColor="gray.200">
+            {group.label}
+          </Heading>
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={5}>
+            {group.charts.map((c) => (
+              <ChartCard key={c.key} title={c.title} desc={c.desc} full={c.full}>
+                {c.render(chartProps)}
+              </ChartCard>
+            ))}
+          </SimpleGrid>
+        </Box>
+      ))}
     </Box>
   );
 }

@@ -71,18 +71,18 @@ export const WORKFLOW_DATA: WorkflowData = {
 
 export const DRAFT_ENTRIES: DraftEntry[] = [
   {
-    file: "20240101T120000--article__draft_essay.org",
+    file: "20260301T120000--article__draft_essay.org",
     title: "Draft article",
-    created: "2024-01-01",
+    created: "2026-03-01",
     published: null,
     lead_time_days: null,
     status: "draft",
   },
   {
-    file: "20231201T100000--published__essay.org",
+    file: "20260201T100000--published__essay.org",
     title: "Published essay",
-    created: "2023-12-01",
-    published: "2024-01-15",
+    created: "2026-02-01",
+    published: "2026-03-17",
     lead_time_days: 45,
     status: "published",
   },
