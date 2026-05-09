@@ -6,7 +6,7 @@ export function useWorkflowData() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("workflow-data.json")
+    fetch(`${import.meta.env.BASE_URL}workflow-data.json`)
       .then((r) => r.json())
       .then(setData)
       .catch((e) => setError(e.message));

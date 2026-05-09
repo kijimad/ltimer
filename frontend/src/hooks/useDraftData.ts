@@ -6,7 +6,7 @@ export function useDraftData() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("draft-data.json")
+    fetch(`${import.meta.env.BASE_URL}draft-data.json`)
       .then((r) => r.json())
       .then(setData)
       .catch((e) => setError(e.message));
