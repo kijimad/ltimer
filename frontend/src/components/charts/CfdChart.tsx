@@ -15,10 +15,12 @@ import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
 interface Props {
   tasks: Task[];
   unit: TimeUnit;
+  cutoff: string;
 }
 
-export function CfdChart({ tasks, unit }: Props) {
+export function CfdChart({ tasks, unit, cutoff }: Props) {
   const data = useMemo(() => {
+    const cutoffPeriod = periodKey(cutoff, unit);
     const startedByPeriod: Record<string, number> = {};
     const completedByPeriod: Record<string, number> = {};
     const closedByPeriod: Record<string, number> = {};
@@ -34,10 +36,9 @@ export function CfdChart({ tasks, unit }: Props) {
         const cp = periodKey(cd, unit);
         completedByPeriod[cp] = (completedByPeriod[cp] || 0) + 1;
         periods.add(cp);
-      }
-      if (t.status === "CLOSE" && cd) {
-        const cp = periodKey(cd, unit);
-        closedByPeriod[cp] = (closedByPeriod[cp] || 0) + 1;
+        if (t.status === "CLOSE") {
+          closedByPeriod[cp] = (closedByPeriod[cp] || 0) + 1;
+        }
       }
     }
 
@@ -46,18 +47,16 @@ export function CfdChart({ tasks, unit }: Props) {
     let cumCompleted = 0;
     let cumClosed = 0;
 
-    return sorted.map((p) => {
+    return sorted.reduce<{ period: string; Started: number; Completed: number; Closed: number }[]>((acc, p) => {
       cumStarted += startedByPeriod[p] || 0;
       cumCompleted += completedByPeriod[p] || 0;
       cumClosed += closedByPeriod[p] || 0;
-      return {
-        period: p,
-        Started: cumStarted,
-        Completed: cumCompleted,
-        Closed: cumClosed,
-      };
-    });
-  }, [tasks, unit]);
+      if (p >= cutoffPeriod) {
+        acc.push({ period: p, Started: cumStarted, Completed: cumCompleted, Closed: cumClosed });
+      }
+      return acc;
+    }, []);
+  }, [tasks, unit, cutoff]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

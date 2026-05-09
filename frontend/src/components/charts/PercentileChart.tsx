@@ -41,9 +41,13 @@ export function PercentileChart({ tasks, unit }: Props) {
       });
   }, [tasks, unit]);
 
-  const allDone = tasks.filter((t) => t.status === "DONE");
-  const globalSorted = [...allDone].map((t) => t.lead_time_days).sort((a, b) => a - b);
-  const globalP85 = percentile(globalSorted, 85);
+  const globalP85 = useMemo(() => {
+    const sorted = tasks
+      .filter((t) => t.status === "DONE")
+      .map((t) => t.lead_time_days)
+      .sort((a, b) => a - b);
+    return percentile(sorted, 85);
+  }, [tasks]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

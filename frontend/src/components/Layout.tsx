@@ -1,6 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Flex, Box } from "@chakra-ui/react";
 
+const NAV_ITEMS = [
+  { to: "/", label: "Tasks", end: true },
+  { to: "/draft", label: "Draft" },
+  { to: "/activity", label: "Activity" },
+];
+
 export function Layout() {
   return (
     <>
@@ -15,36 +21,23 @@ export function Layout() {
         borderColor="gray.200"
         bg="white"
       >
-        <NavLink to="/" end style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Box
-              color={isActive ? "gray.800" : "gray.500"}
-              borderBottom={isActive ? "2px solid" : "2px solid transparent"}
-              borderColor={isActive ? "blue.500" : "transparent"}
-              pb={1}
-              fontSize="sm"
-              fontWeight="medium"
-              _hover={{ color: "gray.800" }}
-            >
-              Tasks
-            </Box>
-          )}
-        </NavLink>
-        <NavLink to="/draft" style={{ textDecoration: "none" }}>
-          {({ isActive }) => (
-            <Box
-              color={isActive ? "gray.800" : "gray.500"}
-              borderBottom={isActive ? "2px solid" : "2px solid transparent"}
-              borderColor={isActive ? "blue.500" : "transparent"}
-              pb={1}
-              fontSize="sm"
-              fontWeight="medium"
-              _hover={{ color: "gray.800" }}
-            >
-              Draft
-            </Box>
-          )}
-        </NavLink>
+        {NAV_ITEMS.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.end} style={{ textDecoration: "none" }}>
+            {({ isActive }) => (
+              <Box
+                color={isActive ? "gray.800" : "gray.500"}
+                borderBottom={isActive ? "2px solid" : "2px solid transparent"}
+                borderColor={isActive ? "blue.500" : "transparent"}
+                pb={1}
+                fontSize="sm"
+                fontWeight="medium"
+                _hover={{ color: "gray.800" }}
+              >
+                {item.label}
+              </Box>
+            )}
+          </NavLink>
+        ))}
       </Flex>
       <Outlet />
     </>

@@ -37,5 +37,25 @@ export interface DraftData {
   entries: DraftEntry[];
 }
 
+export interface Activity {
+  title: string;
+  total_minutes: number;
+  session_count: number;
+  active_days: number;
+  first_date: string;
+  last_date: string;
+}
+
+export interface ActivityDailyEntry {
+  date: string;
+  activities: { title: string; minutes: number }[];
+}
+
+export interface ActivityData {
+  generated_at: string;
+  activities: Activity[];
+  daily: ActivityDailyEntry[];
+}
+
 export type TimeUnit = "week" | "month";
 export type TimeRange = "1w" | "1m" | "3m" | "6m";

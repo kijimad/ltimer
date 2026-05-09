@@ -9,10 +9,12 @@ import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
 interface Props {
   tasks: Task[];
   unit: TimeUnit;
+  cutoff: string;
 }
 
-export function LittlesLaw({ tasks, unit }: Props) {
+export function LittlesLaw({ tasks, unit, cutoff }: Props) {
   const data = useMemo(() => {
+    const cutoffPeriod = periodKey(cutoff, unit);
     const throughput: Record<string, number> = {};
     const leadTimes: Record<string, number[]> = {};
     const periods = new Set<string>();
@@ -34,16 +36,18 @@ export function LittlesLaw({ tasks, unit }: Props) {
     });
 
     const sorted = Array.from(periods).sort();
-    return sorted.map((p) => {
-      const wip = ranges.filter((r) => r.start <= p && p < r.end).length;
-      const tp = throughput[p] || 0;
-      const avgLt = leadTimes[p]
-        ? Math.round((leadTimes[p].reduce((s, v) => s + v, 0) / leadTimes[p].length) * 10) / 10
-        : 0;
-      const predicted = tp > 0 ? Math.round((wip / tp) * 10) / 10 : 0;
-      return { period: p, "Actual LT": avgLt, "Predicted (WIP/T)": predicted, WIP: wip };
-    });
-  }, [tasks, unit]);
+    return sorted
+      .filter((p) => p >= cutoffPeriod)
+      .map((p) => {
+        const wip = ranges.filter((r) => r.start <= p && p < r.end).length;
+        const tp = throughput[p] || 0;
+        const avgLt = leadTimes[p]
+          ? Math.round((leadTimes[p].reduce((s, v) => s + v, 0) / leadTimes[p].length) * 10) / 10
+          : 0;
+        const predicted = tp > 0 ? Math.round((wip / tp) * 10) / 10 : 0;
+        return { period: p, "Actual LT": avgLt, "Predicted (WIP/T)": predicted, WIP: wip };
+      });
+  }, [tasks, unit, cutoff]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

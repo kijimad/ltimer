@@ -15,10 +15,12 @@ import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
 interface Props {
   tasks: Task[];
   unit: TimeUnit;
+  cutoff: string;
 }
 
-export function CashFlowChart({ tasks, unit }: Props) {
+export function CashFlowChart({ tasks, unit, cutoff }: Props) {
   const data = useMemo(() => {
+    const cutoffPeriod = periodKey(cutoff, unit);
     const started: Record<string, number> = {};
     const completed: Record<string, number> = {};
     const periods = new Set<string>();
@@ -39,12 +41,15 @@ export function CashFlowChart({ tasks, unit }: Props) {
     const sorted = Array.from(periods).sort();
     let cumulative = 0;
 
-    return sorted.map((p) => {
+    return sorted.reduce<{ period: string; CashFlow: number }[]>((acc, p) => {
       const net = (completed[p] || 0) - (started[p] || 0);
       cumulative += net;
-      return { period: p, CashFlow: cumulative };
-    });
-  }, [tasks, unit]);
+      if (p >= cutoffPeriod) {
+        acc.push({ period: p, CashFlow: cumulative });
+      }
+      return acc;
+    }, []);
+  }, [tasks, unit, cutoff]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

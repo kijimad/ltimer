@@ -12,26 +12,27 @@ export function TasksPage() {
 
   const unit = unitForRange(range);
 
+  const cutoff = useMemo(() => rangeStartDate(range).toISOString().slice(0, 10), [range]);
+
   const filtered = useMemo(() => {
     if (!data) return null;
-    const cutoff = rangeStartDate(range).toISOString().slice(0, 10);
     const tasks = data.tasks.filter(
       (t) => t.last_clock_out.slice(0, 10) >= cutoff || t.first_clock_in.slice(0, 10) >= cutoff
     );
     const dailyWork = data.daily_work.filter((d) => d.date >= cutoff);
     return { tasks, dailyWork };
-  }, [data, range]);
+  }, [data, cutoff]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !filtered) return <Box p={5}>Loading...</Box>;
 
-  const chartProps = { tasks: filtered.tasks, dailyWork: filtered.dailyWork, unit };
+  const chartProps = { tasks: filtered.tasks, dailyWork: filtered.dailyWork, unit, cutoff };
 
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Lead Time Dashboard</Heading>
       <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {data.generated_at.slice(0, 16)} | Cutoff: {rangeStartDate(range).toISOString().slice(0, 10)}
+        Generated: {data.generated_at.slice(0, 16)} | Cutoff: {cutoff}
       </Text>
       <TimeRangeSwitch range={range} onChange={setRange} />
       {CHART_GROUPS.map((group) => (

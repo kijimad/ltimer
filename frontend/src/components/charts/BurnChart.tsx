@@ -14,9 +14,10 @@ import { completedDate } from "../../hooks/usePeriodKey.ts";
 
 interface Props {
   tasks: Task[];
+  cutoff: string;
 }
 
-export function BurnChart({ tasks }: Props) {
+export function BurnChart({ tasks, cutoff }: Props) {
   const data = useMemo(() => {
     const startDates: Record<string, number> = {};
     const completeDates: Record<string, number> = {};
@@ -38,17 +39,15 @@ export function BurnChart({ tasks }: Props) {
     let cumStarted = 0;
     let cumCompleted = 0;
 
-    return sorted.map((date) => {
+    return sorted.reduce<{ date: string; Started: number; Completed: number; WIP: number }[]>((acc, date) => {
       cumStarted += startDates[date] || 0;
       cumCompleted += completeDates[date] || 0;
-      return {
-        date,
-        Started: cumStarted,
-        Completed: cumCompleted,
-        WIP: cumStarted - cumCompleted,
-      };
-    });
-  }, [tasks]);
+      if (date >= cutoff) {
+        acc.push({ date, Started: cumStarted, Completed: cumCompleted, WIP: cumStarted - cumCompleted });
+      }
+      return acc;
+    }, []);
+  }, [tasks, cutoff]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

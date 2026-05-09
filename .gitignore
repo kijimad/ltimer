@@ -6,3 +6,4 @@ frontend/node_modules/
 frontend/dist/
 frontend/public/workflow-data.json
 frontend/public/draft-data.json
+frontend/public/activity-data.json
