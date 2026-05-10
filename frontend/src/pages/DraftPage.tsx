@@ -63,7 +63,9 @@ export function DraftPage() {
 
   const scatterData = filtered.map((e) => ({
     title: e.title,
-    leadTime: e.lead_time_days ?? 0,
+    days: e.status === "published"
+      ? (e.lead_time_days ?? 0)
+      : Math.floor((Date.now() - new Date(e.created).getTime()) / (1000 * 60 * 60 * 24)),
     status: e.status,
   }));
 
@@ -102,22 +104,37 @@ export function DraftPage() {
           <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
             <Heading size="sm" color="gray.700" borderBottom="1px solid" borderColor="gray.100" pb={1} mb={2}>Draft vs Published</Heading>
             <Text fontSize="xs" color="gray.400" mb={3} lineHeight="tall">
-              公開済みと下書き中のリードタイム分布。下書き中のものが長期化していないか確認する
+              公開済みはリードタイム、下書き中は作成からの経過日数を表示。下書きが公開済みの典型リードタイムを超えていないか確認する
             </Text>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsScatter margin={{ left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis type="number" dataKey="leadTime" name="Lead Time" unit="d" />
-                <YAxis type="category" dataKey="status" />
-                <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0" }} />
+                <XAxis type="number" dataKey="days" name="Days" unit="d" />
+                <YAxis type="category" dataKey="status" allowDuplicatedCategory={false} />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.[0]) return null;
+                    const d = payload[0].payload;
+                    return (
+                      <div style={{ background: "#fff", border: "1px solid #e2e8f0", padding: "8px", fontSize: "12px" }}>
+                        <div>{d.title}</div>
+                        <div>{d.days}d ({d.status === "draft" ? "経過" : "リードタイム"})</div>
+                      </div>
+                    );
+                  }}
+                />
                 <Scatter
+                  name="published"
                   data={scatterData.filter((d) => d.status === "published")}
                   fill="#3fb950"
+                  fillOpacity={0.6}
                   isAnimationActive={false}
                 />
                 <Scatter
+                  name="draft"
                   data={scatterData.filter((d) => d.status === "draft")}
                   fill="#f0883e"
+                  fillOpacity={0.6}
                   isAnimationActive={false}
                 />
               </RechartsScatter>
