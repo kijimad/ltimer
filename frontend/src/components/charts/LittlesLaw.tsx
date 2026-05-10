@@ -9,12 +9,12 @@ import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
 interface Props {
   tasks: Task[];
   unit: TimeUnit;
-  cutoff: string;
+  startedAt: string;
 }
 
-export function LittlesLaw({ tasks, unit, cutoff }: Props) {
+export function LittlesLaw({ tasks, unit, startedAt }: Props) {
   const data = useMemo(() => {
-    const cutoffPeriod = periodKey(cutoff, unit);
+    const startedAtPeriod = periodKey(startedAt, unit);
     const throughput: Record<string, number> = {};
     const leadTimes: Record<string, number[]> = {};
     const periods = new Set<string>();
@@ -37,7 +37,7 @@ export function LittlesLaw({ tasks, unit, cutoff }: Props) {
 
     const sorted = Array.from(periods).sort();
     return sorted
-      .filter((p) => p >= cutoffPeriod)
+      .filter((p) => p >= startedAtPeriod)
       .map((p) => {
         const wip = ranges.filter((r) => r.start <= p && p < r.end).length;
         const tp = throughput[p] || 0;
@@ -47,7 +47,7 @@ export function LittlesLaw({ tasks, unit, cutoff }: Props) {
         const predicted = tp > 0 ? Math.round((wip / tp) * 10) / 10 : 0;
         return { period: p, "Actual LT": avgLt, "Predicted (WIP/T)": predicted, WIP: wip };
       });
-  }, [tasks, unit, cutoff]);
+  }, [tasks, unit, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

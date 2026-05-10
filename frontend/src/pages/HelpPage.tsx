@@ -81,25 +81,27 @@ CLOCK: [2025-01-12 Sun 09:00]--[2025-01-12 Sun 09:50]  (50min)`}</Pre>
 
       <Section title="集計範囲フィルタ">
         <Text mb={3} fontSize="sm" color="gray.600">
-          ダッシュボードの集計範囲スイッチ (前週/前月/3ヶ月/半年) は以下のように作用する:
+          集計範囲は started_at ~ finished_at の日付範囲として定義される。
+          プリセット (前週/前月/3ヶ月/半年) は started_at を過去に設定し、finished_at を今日にする。
         </Text>
-        <Pre>{`cutoff = rangeStartDate(range)   例: 3ヶ月なら "2025-10-10"
+        <Pre>{`{ started_at, finished_at } = rangeDates(range)
+例: 3ヶ月 → { started_at: "2026-02-10", finished_at: "2026-05-10" }
 
 タスクの絞り込み (Tasks ページ):
-  対象条件: last_clock_out >= cutoff  または  first_clock_in >= cutoff
+  対象条件: last_clock_out >= started_at  または  first_clock_in >= started_at
 
 チャートのデータポイント:
   累積チャート (CFD, バーン, キャッシュフロー):
     - 初期値を正しく算出するため、全期間から累積計算する
-    - 表示は cutoff 以降のデータポイントのみ
+    - 表示は started_at 以降のデータポイントのみ
 
   期間チャート (WIP 推移, リトルの法則, ROI):
-    - cutoff 以降の期間のみ表示
-    - WIP 数は cutoff 前に開始されたタスクも含む (正しい挙動)
+    - started_at 以降の期間のみ表示
+    - WIP 数は started_at 前に開始されたタスクも含む (正しい挙動)
 
   イベントチャート (スループット, ヒストグラム):
     - 範囲内の完了イベントのみ集計
-    - cutoff 前のイベントはタスク絞り込みで自動的に除外`}</Pre>
+    - started_at 前のイベントはタスク絞り込みで自動的に除外`}</Pre>
       </Section>
     </Box>
   );

@@ -6,18 +6,24 @@ export function useTimeRange() {
   return { range, setRange };
 }
 
-export function rangeStartDate(range: TimeRange): Date {
+export function rangeDates(range: TimeRange): { startedAt: Date; finishedAt: Date } {
   const now = new Date();
+  let startedAt: Date;
   switch (range) {
     case "1w":
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      startedAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      break;
     case "1m":
-      return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      startedAt = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      break;
     case "3m":
-      return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      startedAt = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      break;
     case "6m":
-      return new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+      startedAt = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+      break;
   }
+  return { startedAt, finishedAt: now };
 }
 
 export function unitForRange(range: TimeRange): TimeUnit {

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Box, Heading, Text, SimpleGrid } from "@chakra-ui/react";
 import { useWorkflowData } from "../hooks/useWorkflowData.ts";
-import { useTimeRange, rangeStartDate, unitForRange } from "../hooks/useTimeRange.ts";
+import { useTimeRange, rangeDates, unitForRange } from "../hooks/useTimeRange.ts";
 import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
 import { CHART_GROUPS } from "../chartConfig.tsx";
@@ -12,27 +12,33 @@ export function TasksPage() {
 
   const unit = unitForRange(range);
 
-  const cutoff = useMemo(() => rangeStartDate(range).toISOString().slice(0, 10), [range]);
+  const { startedAt, finishedAt } = useMemo(() => {
+    const d = rangeDates(range);
+    return {
+      startedAt: d.startedAt.toISOString().slice(0, 10),
+      finishedAt: d.finishedAt.toISOString().slice(0, 10),
+    };
+  }, [range]);
 
   const filtered = useMemo(() => {
     if (!data) return null;
     const tasks = data.tasks.filter(
-      (t) => t.last_clock_out.slice(0, 10) >= cutoff || t.first_clock_in.slice(0, 10) >= cutoff
+      (t) => t.last_clock_out.slice(0, 10) >= startedAt || t.first_clock_in.slice(0, 10) >= startedAt
     );
-    const dailyWork = data.daily_work.filter((d) => d.date >= cutoff);
+    const dailyWork = data.daily_work.filter((d) => d.date >= startedAt);
     return { tasks, dailyWork };
-  }, [data, cutoff]);
+  }, [data, startedAt]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !filtered) return <Box p={5}>Loading...</Box>;
 
-  const chartProps = { tasks: filtered.tasks, dailyWork: filtered.dailyWork, unit, cutoff };
+  const chartProps = { tasks: filtered.tasks, dailyWork: filtered.dailyWork, unit, startedAt };
 
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Lead Time Dashboard</Heading>
       <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {data.generated_at.slice(0, 16)} | Cutoff: {cutoff}
+        Generated: {data.generated_at.slice(0, 16)} | {startedAt} ~ {finishedAt}
       </Text>
       <TimeRangeSwitch range={range} onChange={setRange} />
       {CHART_GROUPS.map((group) => (

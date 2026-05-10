@@ -27,7 +27,7 @@ export interface ChartProps {
   tasks: Task[];
   dailyWork: DailyWorkEntry[];
   unit: TimeUnit;
-  cutoff: string;
+  startedAt: string;
 }
 
 interface ChartEntry {
@@ -95,7 +95,7 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "wip-trend",
         title: "WIP Trend",
         desc: "期間ごとの仕掛かり(WIP)数の推移。WIPが増え続けていれば着手過多でボトルネックの兆候",
-        render: ({ tasks, unit, cutoff }) => <WipTrend tasks={tasks} unit={unit} cutoff={cutoff} />,
+        render: ({ tasks, unit, startedAt }) => <WipTrend tasks={tasks} unit={unit} startedAt={startedAt} />,
       },
       {
         key: "throughput",
@@ -107,13 +107,13 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "cfd",
         title: "Cumulative Flow Diagram",
         desc: "期間ごとのStarted/Completed/Closedの累積数を積み上げ面グラフで表示。バンド(帯)の幅がWIP量を示し、広がっていれば仕掛かりが増加している",
-        render: ({ tasks, unit, cutoff }) => <CfdChart tasks={tasks} unit={unit} cutoff={cutoff} />,
+        render: ({ tasks, unit, startedAt }) => <CfdChart tasks={tasks} unit={unit} startedAt={startedAt} />,
       },
       {
         key: "burn",
         title: "Burn Chart",
         desc: "日ごとの累積Started/Completed数とWIP数を表示。Started-Completedの差がWIP。二つの線が離れるほど仕掛かりが溜まっている",
-        render: ({ tasks, cutoff }) => <BurnChart tasks={tasks} cutoff={cutoff} />,
+        render: ({ tasks, startedAt }) => <BurnChart tasks={tasks} startedAt={startedAt} />,
       },
       {
         key: "aging-wip",
@@ -125,7 +125,7 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "littles-law",
         title: "Little's Law Validation",
         desc: "リトルの法則(LT = WIP / Throughput)による予測リードタイムと実績リードタイムを比較。乖離が大きい期間はフローが不安定",
-        render: ({ tasks, unit, cutoff }) => <LittlesLaw tasks={tasks} unit={unit} cutoff={cutoff} />,
+        render: ({ tasks, unit, startedAt }) => <LittlesLaw tasks={tasks} unit={unit} startedAt={startedAt} />,
       },
       {
         key: "wait-time",
@@ -169,13 +169,13 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "roi",
         title: "ROI (T / I)",
         desc: "投資収益率 = スループット(T) / 在庫(I)。期間あたり完了数÷WIP数。高いほど仕掛かり在庫が効率的にスループットへ変換されている",
-        render: ({ tasks, unit, cutoff }) => <RoiChart tasks={tasks} unit={unit} cutoff={cutoff} />,
+        render: ({ tasks, unit, startedAt }) => <RoiChart tasks={tasks} unit={unit} startedAt={startedAt} />,
       },
       {
         key: "cash-flow",
         title: "Cash Flow",
         desc: "期間ごとの(完了数 - 新規着手数)を累積表示。右肩上がりなら在庫が減りスループットが勝っている健全な状態",
-        render: ({ tasks, unit, cutoff }) => <CashFlowChart tasks={tasks} unit={unit} cutoff={cutoff} />,
+        render: ({ tasks, unit, startedAt }) => <CashFlowChart tasks={tasks} unit={unit} startedAt={startedAt} />,
       },
       {
         key: "bottleneck",

@@ -14,12 +14,12 @@ import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
 interface Props {
   tasks: Task[];
   unit: TimeUnit;
-  cutoff: string;
+  startedAt: string;
 }
 
-export function RoiChart({ tasks, unit, cutoff }: Props) {
+export function RoiChart({ tasks, unit, startedAt }: Props) {
   const data = useMemo(() => {
-    const cutoffPeriod = periodKey(cutoff, unit);
+    const startedAtPeriod = periodKey(startedAt, unit);
     // Throughput per period
     const throughput: Record<string, number> = {};
     for (const t of tasks) {
@@ -46,7 +46,7 @@ export function RoiChart({ tasks, unit, cutoff }: Props) {
     const sorted = Array.from(periods).sort();
 
     return sorted
-      .filter((p) => p >= cutoffPeriod)
+      .filter((p) => p >= startedAtPeriod)
       .map((p) => {
         const wip = ranges.filter((r) => r.start <= p && p < r.end).length;
         const t = throughput[p] || 0;
@@ -55,7 +55,7 @@ export function RoiChart({ tasks, unit, cutoff }: Props) {
           ROI: wip > 0 ? Math.round((t / wip) * 100) / 100 : 0,
         };
       });
-  }, [tasks, unit, cutoff]);
+  }, [tasks, unit, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

@@ -14,12 +14,12 @@ import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
 interface Props {
   tasks: Task[];
   unit: TimeUnit;
-  cutoff: string;
+  startedAt: string;
 }
 
-export function WipTrend({ tasks, unit, cutoff }: Props) {
+export function WipTrend({ tasks, unit, startedAt }: Props) {
   const data = useMemo(() => {
-    const cutoffPeriod = periodKey(cutoff, unit);
+    const startedAtPeriod = periodKey(startedAt, unit);
     const periods = new Set<string>();
     const ranges = tasks.map((t) => {
       const start = periodKey(t.first_clock_in, unit);
@@ -32,12 +32,12 @@ export function WipTrend({ tasks, unit, cutoff }: Props) {
 
     const sorted = Array.from(periods).sort();
     return sorted
-      .filter((p) => p >= cutoffPeriod)
+      .filter((p) => p >= startedAtPeriod)
       .map((p) => ({
         period: p,
         wip: ranges.filter((r) => r.start <= p && p < r.end).length,
       }));
-  }, [tasks, unit, cutoff]);
+  }, [tasks, unit, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

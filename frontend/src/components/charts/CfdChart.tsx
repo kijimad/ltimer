@@ -15,12 +15,12 @@ import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
 interface Props {
   tasks: Task[];
   unit: TimeUnit;
-  cutoff: string;
+  startedAt: string;
 }
 
-export function CfdChart({ tasks, unit, cutoff }: Props) {
+export function CfdChart({ tasks, unit, startedAt }: Props) {
   const data = useMemo(() => {
-    const cutoffPeriod = periodKey(cutoff, unit);
+    const startedAtPeriod = periodKey(startedAt, unit);
     const startedByPeriod: Record<string, number> = {};
     const completedByPeriod: Record<string, number> = {};
     const closedByPeriod: Record<string, number> = {};
@@ -51,12 +51,12 @@ export function CfdChart({ tasks, unit, cutoff }: Props) {
       cumStarted += startedByPeriod[p] || 0;
       cumCompleted += completedByPeriod[p] || 0;
       cumClosed += closedByPeriod[p] || 0;
-      if (p >= cutoffPeriod) {
+      if (p >= startedAtPeriod) {
         acc.push({ period: p, Started: cumStarted, Completed: cumCompleted, Closed: cumClosed });
       }
       return acc;
     }, []);
-  }, [tasks, unit, cutoff]);
+  }, [tasks, unit, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

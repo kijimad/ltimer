@@ -7,7 +7,7 @@ import {
 import {
   Box, Heading, Text, SimpleGrid, Table, Badge,
 } from "@chakra-ui/react";
-import { useTimeRange, rangeStartDate } from "../hooks/useTimeRange.ts";
+import { useTimeRange, rangeDates } from "../hooks/useTimeRange.ts";
 import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 
 export function DraftPage() {
@@ -25,14 +25,15 @@ export function DraftPage() {
     }
   };
 
+  const startedAt = useMemo(() => rangeDates(range).startedAt.toISOString().slice(0, 10), [range]);
+
   const filtered = useMemo(() => {
     if (!data) return null;
-    const cutoff = rangeStartDate(range).toISOString().slice(0, 10);
     const entries = data.entries.filter(
-      (e) => e.created >= cutoff || (e.published && e.published >= cutoff)
+      (e) => e.created >= startedAt || (e.published && e.published >= startedAt)
     );
     return entries;
-  }, [data, range]);
+  }, [data, startedAt]);
 
   const sorted = useMemo(() => {
     if (!filtered) return [];
@@ -75,7 +76,7 @@ export function DraftPage() {
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Draft Lead Time</Heading>
       <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {data.generated_at.slice(0, 16)} | Cutoff: {rangeStartDate(range).toISOString().slice(0, 10)}
+        Generated: {data.generated_at.slice(0, 16)} | {startedAt} ~
       </Text>
       <TimeRangeSwitch range={range} onChange={setRange} />
 
