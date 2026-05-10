@@ -90,7 +90,7 @@ export function DraftPage() {
             <ResponsiveContainer width="100%" height={Math.max(200, barData.length * 28)}>
               <BarChart data={barData} layout="vertical" margin={{ left: 120 }}>
                 <XAxis type="number" />
-                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} interval={0} />
                 <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0" }} />
                 <Bar dataKey="days" fill="#3fb950" isAnimationActive={false} />
               </BarChart>
@@ -134,7 +134,7 @@ export function DraftPage() {
             <ResponsiveContainer width="100%" height={Math.max(200, draftAging.length * 28)}>
               <BarChart data={draftAging} layout="vertical" margin={{ left: 120 }}>
                 <XAxis type="number" />
-                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} interval={0} />
                 <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0" }} />
                 <Bar
                   dataKey="days"

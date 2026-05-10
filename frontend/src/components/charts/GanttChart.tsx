@@ -54,7 +54,7 @@ export function GanttChart({ tasks }: Props) {
           domain={[minDay, maxDay]}
           tickFormatter={(v: number) => fromDayNum(v)}
         />
-        <YAxis type="category" dataKey="title" stroke="#A0AEC0" width={110} tick={{ fontSize: 11 }} />
+        <YAxis type="category" dataKey="title" stroke="#A0AEC0" width={110} tick={{ fontSize: 11 }} interval={0} />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.[0]) return null;

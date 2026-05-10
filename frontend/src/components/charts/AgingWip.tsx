@@ -28,7 +28,7 @@ export function AgingWip({ tasks }: Props) {
       <BarChart data={data} layout="vertical" margin={{ left: 120 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
         <XAxis type="number" stroke={AXIS_STROKE} unit=" d" />
-        <YAxis type="category" dataKey="title" stroke={AXIS_STROKE} width={110} tick={{ fontSize: 11 }} />
+        <YAxis type="category" dataKey="title" stroke={AXIS_STROKE} width={110} tick={{ fontSize: 11 }} interval={0} />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.[0]) return null;

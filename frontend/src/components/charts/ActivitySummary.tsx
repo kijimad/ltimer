@@ -25,7 +25,7 @@ export function ActivitySummary({ daily }: Props) {
       <BarChart data={data} layout="vertical" margin={{ left: 130 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
         <XAxis type="number" stroke={AXIS_STROKE} unit=" h" />
-        <YAxis type="category" dataKey="title" stroke={AXIS_STROKE} width={120} tick={{ fontSize: 11 }} />
+        <YAxis type="category" dataKey="title" stroke={AXIS_STROKE} width={120} tick={{ fontSize: 11 }} interval={0} />
         <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v} h`, "累計時間"]} />
         <Bar dataKey="hours" fill="#58a6ff" isAnimationActive={false} />
       </BarChart>
