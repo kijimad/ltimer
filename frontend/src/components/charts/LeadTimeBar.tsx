@@ -22,7 +22,7 @@ export function LeadTimeBar({ tasks }: { tasks: Task[] }) {
     <ResponsiveContainer width="100%" height={Math.max(300, data.length * 28)}>
       <BarChart data={data} layout="vertical" margin={{ left: 120 }}>
         <XAxis type="number" />
-        <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
+        <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} interval={0} />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.[0]) return null;
