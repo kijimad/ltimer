@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout.tsx";
 import { TasksPage } from "./pages/TasksPage.tsx";
 import { DraftPage } from "./pages/DraftPage.tsx";
 import { ActivityPage } from "./pages/ActivityPage.tsx";
+import { HelpPage } from "./pages/HelpPage.tsx";
 
 const router = createBrowserRouter(
   [
@@ -13,6 +14,7 @@ const router = createBrowserRouter(
         { index: true, element: <TasksPage /> },
         { path: "draft", element: <DraftPage /> },
         { path: "activity", element: <ActivityPage /> },
+        { path: "help", element: <HelpPage /> },
       ],
     },
   ],
