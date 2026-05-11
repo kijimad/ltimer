@@ -127,10 +127,11 @@ def main():
     output = sys.argv[2] if len(sys.argv) > 2 else "frontend/public/activity-data.json"
     filepath = os.path.join(roam_dir, WORKFLOW_FILE)
     if not os.path.exists(filepath):
-        print(f"Error: {filepath} not found")
-        sys.exit(1)
-    activities = parse_workflow(filepath)
-    data = aggregate(activities)
+        print(f"Warning: {filepath} not found, writing empty data")
+        data = {"generated_at": datetime.now().isoformat(), "activities": [], "daily": []}
+    else:
+        activities = parse_workflow(filepath)
+        data = aggregate(activities)
     with open(output, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(f"Wrote {output} ({len(data['activities'])} activities, {len(data['daily'])} days)")
