@@ -4,11 +4,8 @@ ROAM_DIR ?= ~/roam
 # --- Data ---
 
 .PHONY: data
-data: ## org ファイルからデータ JSON を生成
-	python scripts/parse_workflow.py $(ROAM_DIR) frontend/public/workflow-data.json
-	python scripts/parse_draft.py $(ROAM_DIR) frontend/public/draft-data.json
-	python scripts/parse_activities.py $(ROAM_DIR) frontend/public/activity-data.json
-	python scripts/build_db.py $(ROAM_DIR) frontend/public/ltimer.db
+data: ## org ファイルから DB (frontend/public/ltimer.db) を生成
+	node frontend/scripts/build-db.ts $(ROAM_DIR)
 
 # --- Frontend ---
 
