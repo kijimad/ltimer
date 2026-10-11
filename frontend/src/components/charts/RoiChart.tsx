@@ -8,54 +8,25 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Task, TimeUnit } from "../../types/index.ts";
-import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { wipByPeriod } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
-  unit: TimeUnit;
+  db: Database;
   startedAt: string;
+  unit: TimeUnit;
 }
 
-export function RoiChart({ tasks, unit, startedAt }: Props) {
-  const data = useMemo(() => {
-    const startedAtPeriod = periodKey(startedAt, unit);
-    // Throughput per period
-    const throughput: Record<string, number> = {};
-    for (const t of tasks) {
-      if (t.status !== "DONE") continue;
-      const cd = completedDate(t);
-      if (!cd) continue;
-      const pk = periodKey(cd, unit);
-      throughput[pk] = (throughput[pk] || 0) + 1;
-    }
-
-    // WIP per period
-    const periods = new Set<string>();
-    const ranges = tasks.map((t) => {
-      const start = periodKey(t.first_clock_in, unit);
-      const cd = completedDate(t);
-      const end = cd ? periodKey(cd, unit) : "9999";
-      periods.add(start);
-      if (cd) periods.add(periodKey(cd, unit));
-      return { start, end };
-    });
-
-    // Merge all periods
-    Object.keys(throughput).forEach((p) => periods.add(p));
-    const sorted = Array.from(periods).sort();
-
-    return sorted
-      .filter((p) => p >= startedAtPeriod)
-      .map((p) => {
-        const wip = ranges.filter((r) => r.start <= p && p < r.end).length;
-        const t = throughput[p] || 0;
-        return {
-          period: p,
-          ROI: wip > 0 ? Math.round((t / wip) * 100) / 100 : 0,
-        };
-      });
-  }, [tasks, unit, startedAt]);
+export function RoiChart({ db, startedAt, unit }: Props) {
+  const data = useMemo(
+    () =>
+      wipByPeriod(db, startedAt, unit).map(({ period, wip, throughput }) => ({
+        period,
+        ROI: wip > 0 ? Math.round((throughput / wip) * 100) / 100 : 0,
+      })),
+    [db, startedAt, unit],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={300}>

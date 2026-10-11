@@ -1,63 +1,22 @@
 import { useMemo } from "react";
 import { Box, Text } from "@chakra-ui/react";
-import type { ActivityDailyEntry } from "../../types/index.ts";
-import { daysBetween } from "../../dates.ts";
+import type { Database } from "sql.js";
+import { activityStreaks } from "../../db/charts.ts";
 
 interface Props {
-  daily: ActivityDailyEntry[];
+  db: Database;
+  startedAt: string;
   asOf: string;
 }
 
-function calcStreak(title: string, daily: ActivityDailyEntry[], asOf: string): { current: number; max: number } {
-  const activeDates = new Set<string>();
-  for (const d of daily) {
-    if (d.activities.some((a) => a.title === title)) {
-      activeDates.add(d.date);
-    }
-  }
-
-  const sorted = Array.from(activeDates).sort();
-  if (sorted.length === 0) return { current: 0, max: 0 };
-
-  let max = 1;
-  let cur = 1;
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = new Date(sorted[i - 1]);
-    const curr = new Date(sorted[i]);
-    const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
-    if (diff === 1) {
-      cur++;
-      if (cur > max) max = cur;
-    } else {
-      cur = 1;
-    }
-  }
-
-  const daysSinceLast = daysBetween(sorted[sorted.length - 1], asOf);
-  const currentStreak = daysSinceLast <= 1 ? cur : 0;
-
-  return { current: currentStreak, max };
-}
-
-export function StreakTable({ daily, asOf }: Props) {
-  const streaks = useMemo(() => {
-    // Collect all activity titles from daily data
-    const titleSet = new Set<string>();
-    for (const d of daily) {
-      for (const a of d.activities) titleSet.add(a.title);
-    }
-
-    const totalDays = new Set(daily.map((d) => d.date)).size;
-
-    return Array.from(titleSet).map((title) => {
-      const { current, max } = calcStreak(title, daily, asOf);
-      const recentDays = new Set(
-        daily.filter((d) => d.activities.some((a) => a.title === title)).map((d) => d.date),
-      ).size;
-      const rate = totalDays > 0 ? Math.round((recentDays / totalDays) * 100) : 0;
-      return { title, current, max, recentDays, rate };
-    }).sort((a, b) => b.rate - a.rate);
-  }, [daily, asOf]);
+export function StreakTable({ db, startedAt, asOf }: Props) {
+  const streaks = useMemo(
+    () =>
+      activityStreaks(db, startedAt, asOf)
+        .map((s) => ({ ...s, rate: Math.round(s.rate) }))
+        .sort((a, b) => b.rate - a.rate),
+    [db, startedAt, asOf],
+  );
 
   if (streaks.length === 0) return <Text color="gray.500">No data</Text>;
 

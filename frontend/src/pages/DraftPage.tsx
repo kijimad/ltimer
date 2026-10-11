@@ -1,4 +1,3 @@
-import { useDraftData } from "../hooks/useDraftData.ts";
 import { useState, useMemo } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -13,11 +12,13 @@ import { SummaryRow } from "../components/SummaryRow.tsx";
 import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate, daysBetween } from "../dates.ts";
+import { generatedAt } from "../db/queries.ts";
+import { draftsInRange, draftAges } from "../db/charts.ts";
 import { draftSummary } from "../db/summary.ts";
 import { useDatabase } from "../hooks/useDatabase.ts";
 
 export function DraftPage() {
-  const { data, error } = useDraftData();
+  const { db, error } = useDatabase();
   const { range } = useTimeRange();
   const now = useMountTime();
   const [sortKey, setSortKey] = useState<string>("lead_time_days");
@@ -32,17 +33,11 @@ export function DraftPage() {
     }
   };
 
-  const asOf = data ? asOfDate(data.generated_at) : null;
+  const generated = useMemo(() => (db ? generatedAt(db) : null), [db]);
+  const asOf = generated ? asOfDate(generated) : null;
   const dates = useMemo(() => (asOf ? rangeDates(range, asOf) : null), [range, asOf]);
 
-  const filtered = useMemo(() => {
-    if (!data || !dates) return null;
-    const { startedAt } = dates;
-    const entries = data.entries.filter(
-      (e) => e.created >= startedAt || (e.published && e.published >= startedAt)
-    );
-    return entries;
-  }, [data, dates]);
+  const filtered = useMemo(() => (db && dates ? draftsInRange(db, dates.startedAt) : null), [db, dates]);
 
   const sorted = useMemo(() => {
     if (!filtered) return [];
@@ -57,16 +52,14 @@ export function DraftPage() {
     });
   }, [filtered, sortKey, sortDir]);
 
-  const { db } = useDatabase();
   const summary = useMemo(() => (db && asOf ? draftSummary(db, asOf, range) : null), [db, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
-  if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
+  if (!db || !generated || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
 
   const { startedAt, finishedAt } = dates;
 
   const published = filtered.filter((e) => e.status === "published" && e.lead_time_days != null);
-  const drafts = filtered.filter((e) => e.status === "draft");
 
   const barData = [...published]
     .sort((a, b) => (b.lead_time_days ?? 0) - (a.lead_time_days ?? 0))
@@ -83,15 +76,12 @@ export function DraftPage() {
     status: e.status,
   }));
 
-  const draftAging = drafts.map((e) => {
-    const days = daysBetween(e.created, asOf);
-    return { name: e.title.slice(0, 30), days, file: e.file };
-  }).sort((a, b) => b.days - a.days);
+  const draftAging = draftAges(db, startedAt, asOf).map((e) => ({ name: e.title.slice(0, 30), days: e.days, file: e.file }));
 
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={5}>Draft Lead Time</Heading>
-      <FooterGeneratedAt generatedAt={data.generated_at} now={now} />
+      <FooterGeneratedAt generatedAt={generated} now={now} />
       <SummaryRow summary={summary} />
       <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
 

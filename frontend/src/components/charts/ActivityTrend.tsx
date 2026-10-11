@@ -9,42 +9,31 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { ActivityDailyEntry, TimeUnit } from "../../types/index.ts";
-import { periodKey } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { activityByPeriod } from "../../db/charts.ts";
 import { PALETTE, GRID_STROKE, AXIS_STROKE, TOOLTIP_STYLE } from "./colors.ts";
 
 interface Props {
-  daily: ActivityDailyEntry[];
+  db: Database;
+  startedAt: string;
   unit: TimeUnit;
 }
 
-export function ActivityTrend({ daily, unit }: Props) {
+export function ActivityTrend({ db, startedAt, unit }: Props) {
   const { data, titles } = useMemo(() => {
-    const byPeriod: Record<string, Record<string, number>> = {};
-    const titleSet = new Set<string>();
-
-    for (const d of daily) {
-      const p = periodKey(d.date, unit);
-      if (!byPeriod[p]) byPeriod[p] = {};
-      for (const a of d.activities) {
-        titleSet.add(a.title);
-        byPeriod[p][a.title] = (byPeriod[p][a.title] || 0) + a.minutes;
-      }
-    }
-
-    const titles = Array.from(titleSet).sort();
-    const periods = Object.keys(byPeriod).sort();
-
+    const cells = activityByPeriod(db, startedAt, unit);
+    const titles = [...new Set(cells.map((c) => c.title))].sort();
+    const periods = [...new Set(cells.map((c) => c.period))];
     const data = periods.map((p) => {
       const row: Record<string, string | number> = { period: p };
       for (const t of titles) {
-        row[t] = Math.round((byPeriod[p][t] || 0) / 60 * 10) / 10;
+        row[t] = Math.round((cells.find((c) => c.period === p && c.title === t)?.minutes ?? 0) / 60 * 10) / 10;
       }
       return row;
     });
-
     return { data, titles };
-  }, [daily, unit]);
+  }, [db, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

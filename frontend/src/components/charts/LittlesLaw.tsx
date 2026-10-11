@@ -3,51 +3,27 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts";
-import type { Task, TimeUnit } from "../../types/index.ts";
-import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { wipByPeriod } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
-  unit: TimeUnit;
+  db: Database;
   startedAt: string;
+  unit: TimeUnit;
 }
 
-export function LittlesLaw({ tasks, unit, startedAt }: Props) {
-  const data = useMemo(() => {
-    const startedAtPeriod = periodKey(startedAt, unit);
-    const throughput: Record<string, number> = {};
-    const leadTimes: Record<string, number[]> = {};
-    const periods = new Set<string>();
-
-    const ranges = tasks.map((t) => {
-      const start = periodKey(t.first_clock_in, unit);
-      const cd = completedDate(t);
-      const end = cd ? periodKey(cd, unit) : "9999";
-      periods.add(start);
-      if (cd) periods.add(end);
-
-      if (t.status === "DONE" && cd) {
-        const pk = periodKey(cd, unit);
-        throughput[pk] = (throughput[pk] || 0) + 1;
-        (leadTimes[pk] ??= []).push(t.lead_time_days);
-      }
-
-      return { start, end };
-    });
-
-    const sorted = Array.from(periods).sort();
-    return sorted
-      .filter((p) => p >= startedAtPeriod)
-      .map((p) => {
-        const wip = ranges.filter((r) => r.start <= p && p < r.end).length;
-        const tp = throughput[p] || 0;
-        const avgLt = leadTimes[p]
-          ? Math.round((leadTimes[p].reduce((s, v) => s + v, 0) / leadTimes[p].length) * 10) / 10
-          : 0;
-        const predicted = tp > 0 ? Math.round((wip / tp) * 10) / 10 : 0;
-        return { period: p, "Actual LT": avgLt, "Predicted (WIP/T)": predicted, WIP: wip };
-      });
-  }, [tasks, unit, startedAt]);
+export function LittlesLaw({ db, startedAt, unit }: Props) {
+  const data = useMemo(
+    () =>
+      wipByPeriod(db, startedAt, unit).map(({ period, wip, throughput, avgLead }) => ({
+        period,
+        "Actual LT": avgLead === null ? 0 : Math.round(avgLead * 10) / 10,
+        "Predicted (WIP/T)": throughput > 0 ? Math.round((wip / throughput) * 10) / 10 : 0,
+        WIP: wip,
+      })),
+    [db, startedAt, unit],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={350}>

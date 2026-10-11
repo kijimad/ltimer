@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Box, Heading, SimpleGrid } from "@chakra-ui/react";
-import { useWorkflowData } from "../hooks/useWorkflowData.ts";
 import { useTimeRange, rangeDates, unitForRange } from "../hooks/useTimeRange.ts";
 import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
@@ -11,40 +10,34 @@ import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate } from "../dates.ts";
 import { taskSummary } from "../db/summary.ts";
 import { useDatabase } from "../hooks/useDatabase.ts";
+import { generatedAt } from "../db/queries.ts";
+import { tasksInRange } from "../db/charts.ts";
 
 export function TasksPage() {
-  const { data, error } = useWorkflowData();
+  const { db, error } = useDatabase();
   const { range } = useTimeRange();
   const now = useMountTime();
 
   const unit = unitForRange(range);
 
-  const asOf = data ? asOfDate(data.generated_at) : null;
+  const generated = useMemo(() => (db ? generatedAt(db) : null), [db]);
+  const asOf = generated ? asOfDate(generated) : null;
   const dates = useMemo(() => (asOf ? rangeDates(range, asOf) : null), [range, asOf]);
 
-  const filtered = useMemo(() => {
-    if (!data || !dates) return null;
-    const { startedAt } = dates;
-    const tasks = data.tasks.filter(
-      (t) => t.last_clock_out.slice(0, 10) >= startedAt || t.first_clock_in.slice(0, 10) >= startedAt
-    );
-    const dailyWork = data.daily_work.filter((d) => d.date >= startedAt);
-    return { tasks, dailyWork };
-  }, [data, dates]);
+  const tasks = useMemo(() => (db && dates ? tasksInRange(db, dates.startedAt) : null), [db, dates]);
 
-  const { db } = useDatabase();
   const summary = useMemo(() => (db && asOf ? taskSummary(db, asOf, range) : null), [db, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
-  if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
+  if (!db || !generated || !asOf || !dates || !tasks || !summary) return <Box p={5}>Loading...</Box>;
 
   const { startedAt, finishedAt } = dates;
-  const chartProps = { tasks: filtered.tasks, dailyWork: filtered.dailyWork, unit, startedAt, asOf };
+  const chartProps = { db, tasks, unit, startedAt, asOf };
 
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={5}>Lead Time Dashboard</Heading>
-      <FooterGeneratedAt generatedAt={data.generated_at} now={now} />
+      <FooterGeneratedAt generatedAt={generated} now={now} />
       <SummaryRow summary={summary} />
       <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
       {CHART_GROUPS.map((group) => (

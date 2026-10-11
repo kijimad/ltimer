@@ -9,46 +9,16 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Task } from "../../types/index.ts";
-import { completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import { burnByDate } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
+  db: Database;
   startedAt: string;
 }
 
-export function BurnChart({ tasks, startedAt }: Props) {
-  const data = useMemo(() => {
-    const startDates: Record<string, number> = {};
-    const completeDates: Record<string, number> = {};
-    const allDates = new Set<string>();
-
-    for (const t of tasks) {
-      const sd = t.first_clock_in.slice(0, 10);
-      startDates[sd] = (startDates[sd] || 0) + 1;
-      allDates.add(sd);
-
-      const cd = completedDate(t);
-      if (cd) {
-        completeDates[cd] = (completeDates[cd] || 0) + 1;
-        allDates.add(cd);
-      }
-    }
-
-    const sorted = Array.from(allDates).sort();
-    let cumStarted = 0;
-    let cumCompleted = 0;
-
-    const result: { date: string; Started: number; Completed: number; WIP: number }[] = [];
-    for (const date of sorted) {
-      cumStarted += startDates[date] || 0;
-      cumCompleted += completeDates[date] || 0;
-      if (date >= startedAt) {
-        result.push({ date, Started: cumStarted, Completed: cumCompleted, WIP: cumStarted - cumCompleted });
-      }
-    }
-    return result;
-  }, [tasks, startedAt]);
+export function BurnChart({ db, startedAt }: Props) {
+  const data = useMemo(() => burnByDate(db, startedAt), [db, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

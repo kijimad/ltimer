@@ -1,28 +1,25 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { Task } from "../../types/index.ts";
-import { daysBetween } from "../../dates.ts";
+import type { Database } from "sql.js";
+import { agingTodos } from "../../db/charts.ts";
 import { AGING_THRESHOLD_DAYS, GRID_STROKE, AXIS_STROKE, TOOLTIP_DIV_STYLE } from "./colors.ts";
 
 interface Props {
-  tasks: Task[];
+  db: Database;
+  startedAt: string;
   asOf: string;
 }
 
-export function AgingWip({ tasks, asOf }: Props) {
-  const data = useMemo(() => {
-    return tasks
-      .filter((t) => t.status === "TODO")
-      .map((t) => {
-        const days = daysBetween(t.first_clock_in.slice(0, 10), asOf);
-        return {
-          title: t.title.slice(0, 25),
-          days,
-          fill: days > AGING_THRESHOLD_DAYS ? "#f85149" : "#f0883e",
-        };
-      })
-      .sort((a, b) => b.days - a.days);
-  }, [tasks, asOf]);
+export function AgingWip({ db, startedAt, asOf }: Props) {
+  const data = useMemo(
+    () =>
+      agingTodos(db, startedAt, asOf).map(({ title, days }) => ({
+        title: title.slice(0, 25),
+        days,
+        fill: days > AGING_THRESHOLD_DAYS ? "#f85149" : "#f0883e",
+      })),
+    [db, startedAt, asOf],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(200, data.length * 28)}>

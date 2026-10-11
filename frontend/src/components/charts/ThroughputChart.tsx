@@ -8,28 +8,18 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Task, TimeUnit } from "../../types/index.ts";
-import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { throughputByPeriod } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
+  db: Database;
+  startedAt: string;
   unit: TimeUnit;
 }
 
-export function ThroughputChart({ tasks, unit }: Props) {
-  const data = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const t of tasks) {
-      if (t.status !== "DONE") continue;
-      const cd = completedDate(t);
-      if (!cd) continue;
-      const pk = periodKey(cd, unit);
-      counts[pk] = (counts[pk] || 0) + 1;
-    }
-    return Object.entries(counts)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([period, count]) => ({ period, count }));
-  }, [tasks, unit]);
+export function ThroughputChart({ db, startedAt, unit }: Props) {
+  const data = useMemo(() => throughputByPeriod(db, startedAt, unit), [db, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

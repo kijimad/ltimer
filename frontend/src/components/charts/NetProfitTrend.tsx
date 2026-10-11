@@ -10,42 +10,18 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Task, TimeUnit, DailyWorkEntry } from "../../types/index.ts";
-import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { netProfitByPeriod } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
+  db: Database;
+  startedAt: string;
   unit: TimeUnit;
-  dailyWork: DailyWorkEntry[];
 }
 
-export function NetProfitTrend({ tasks, unit, dailyWork }: Props) {
-  const data = useMemo(() => {
-    const throughput: Record<string, number> = {};
-    for (const t of tasks) {
-      if (t.status !== "DONE") continue;
-      const cd = completedDate(t);
-      if (!cd) continue;
-      const pk = periodKey(cd, unit);
-      throughput[pk] = (throughput[pk] || 0) + 1;
-    }
-
-    const oe: Record<string, number> = {};
-    for (const entry of dailyWork) {
-      const pk = periodKey(entry.date, unit);
-      const totalMin = entry.tasks.reduce((s, t) => s + t.minutes, 0);
-      oe[pk] = (oe[pk] || 0) + Math.round(totalMin / 60 * 10) / 10;
-    }
-
-    const periods = new Set([...Object.keys(throughput), ...Object.keys(oe)]);
-    return Array.from(periods)
-      .sort()
-      .map((p) => ({
-        period: p,
-        Throughput: throughput[p] || 0,
-        OE: oe[p] || 0,
-      }));
-  }, [tasks, unit, dailyWork]);
+export function NetProfitTrend({ db, startedAt, unit }: Props) {
+  const data = useMemo(() => netProfitByPeriod(db, startedAt, unit), [db, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

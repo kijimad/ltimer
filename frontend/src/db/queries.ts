@@ -2,7 +2,7 @@ import type { Database } from "sql.js";
 import type { WorkflowData, ActivityData, DraftData, Task, TaskClock, DraftEntry } from "../types/index.ts";
 import { rows } from "./database.ts";
 
-function generatedAt(db: Database): string {
+export function generatedAt(db: Database): string {
   return rows<{ value: string }>(db, "SELECT value FROM meta WHERE key = 'generated_at'")[0].value;
 }
 

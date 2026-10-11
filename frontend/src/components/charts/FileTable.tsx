@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Box, Table } from "@chakra-ui/react";
-import type { Task } from "../../types/index.ts";
+import type { Database } from "sql.js";
+import { fileSummary } from "../../db/charts.ts";
 import { shortName } from "../../hooks/usePeriodKey.ts";
 
 interface Props {
-  tasks: Task[];
+  db: Database;
+  startedAt: string;
 }
 
 interface FileRow {
@@ -21,31 +23,19 @@ interface FileRow {
 
 type SortKey = keyof FileRow;
 
-export function FileTable({ tasks }: Props) {
+export function FileTable({ db, startedAt }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [asc, setAsc] = useState(false);
 
-  const rows = useMemo(() => {
-    const byFile: Record<string, Task[]> = {};
-    for (const t of tasks) {
-      (byFile[t.file] ??= []).push(t);
-    }
-
-    return Object.entries(byFile).map(([file, ts]): FileRow => {
-      const leads = ts.map((t) => t.lead_time_days);
-      return {
-        file,
-        display: shortName(file),
-        total: ts.length,
-        todo: ts.filter((t) => t.status === "TODO").length,
-        done: ts.filter((t) => t.status === "DONE").length,
-        close: ts.filter((t) => t.status === "CLOSE").length,
-        work: ts.reduce((s, t) => s + t.total_minutes, 0),
-        avgLead: Math.round((leads.reduce((s, v) => s + v, 0) / leads.length) * 10) / 10,
-        maxLead: Math.max(...leads),
-      };
-    });
-  }, [tasks]);
+  const rows = useMemo(
+    () =>
+      fileSummary(db, startedAt).map(({ avgLead, ...r }): FileRow => ({
+        ...r,
+        display: shortName(r.file),
+        avgLead: Math.round(avgLead * 10) / 10,
+      })),
+    [db, startedAt],
+  );
 
   const sorted = useMemo(() => {
     return [...rows].sort((a, b) => {

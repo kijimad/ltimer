@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { summaryPeriods, scaleFrom, bandOf } from "./metrics.ts";
 import * as sql from "./db/summary.ts";
-import { createTestDatabase } from "./test/db.ts";
+import { createTestDatabase, fromTasks, fromDaily } from "./test/db.ts";
 import { addDays } from "./dates.ts";
-import type { Task, DraftEntry, ActivityDailyEntry, RawTask, TimeRange } from "./types/index.ts";
+import type { Task, DraftEntry, ActivityDailyEntry, TimeRange } from "./types/index.ts";
 import type { Summary } from "./metrics.ts";
 
 const TODAY = "2024-03-01";
@@ -27,35 +27,14 @@ function task(overrides: Partial<Task>): Task {
   };
 }
 
-const utc = (local: string) => new Date(local.replace(" ", "T")).toISOString();
-
-/** 表示用の Task を DB の行にする。clocks がなければ着手と最終作業の2点で作業時間を表す */
-function toRaw(t: Task): RawTask {
-  const clocks = t.clocks.length > 0
-    ? t.clocks
-    : [{ start: t.first_clock_in, end: t.first_clock_in, minutes: t.total_minutes }, { start: t.last_clock_out, end: t.last_clock_out, minutes: 0 }];
-  return {
-    title: t.title,
-    file: t.file,
-    status: t.status,
-    closed_at: t.closed_at && utc(t.closed_at),
-    clocks: clocks.map((c) => ({ start: utc(c.start), end: utc(c.end), minutes: c.minutes })),
-  };
-}
-
 const GENERATED = "2024-03-01T03:00:00Z";
 const taskSummary = (tasks: Task[], asOf: string, range: TimeRange) =>
-  sql.taskSummary(createTestDatabase({ generatedAt: GENERATED, tasks: tasks.map(toRaw) }), asOf, range);
+  sql.taskSummary(createTestDatabase({ generatedAt: GENERATED, tasks: fromTasks(tasks) }), asOf, range);
 const draftSummary = (drafts: DraftEntry[], asOf: string, range: TimeRange) =>
   sql.draftSummary(createTestDatabase({ generatedAt: GENERATED, drafts }), asOf, range);
 const activitySummary = (daily: ActivityDailyEntry[], asOf: string, range: TimeRange) =>
   sql.activitySummary(
-    createTestDatabase({
-      generatedAt: GENERATED,
-      activities: daily.flatMap((d) =>
-        d.activities.map((a) => ({ title: a.title, clocks: [{ start: utc(`${d.date} 12:00`), end: utc(`${d.date} 12:30`), minutes: a.minutes }] })),
-      ),
-    }),
+    createTestDatabase({ generatedAt: GENERATED, activities: fromDaily(daily) }),
     asOf,
     range,
   );

@@ -8,36 +8,18 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Task, TimeUnit } from "../../types/index.ts";
-import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { wipByPeriod } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
-  unit: TimeUnit;
+  db: Database;
   startedAt: string;
+  unit: TimeUnit;
 }
 
-export function WipTrend({ tasks, unit, startedAt }: Props) {
-  const data = useMemo(() => {
-    const startedAtPeriod = periodKey(startedAt, unit);
-    const periods = new Set<string>();
-    const ranges = tasks.map((t) => {
-      const start = periodKey(t.first_clock_in, unit);
-      const cd = completedDate(t);
-      const end = cd ? periodKey(cd, unit) : "9999";
-      periods.add(start);
-      if (cd) periods.add(periodKey(cd, unit));
-      return { start, end };
-    });
-
-    const sorted = Array.from(periods).sort();
-    return sorted
-      .filter((p) => p >= startedAtPeriod)
-      .map((p) => ({
-        period: p,
-        wip: ranges.filter((r) => r.start <= p && p < r.end).length,
-      }));
-  }, [tasks, unit, startedAt]);
+export function WipTrend({ db, startedAt, unit }: Props) {
+  const data = useMemo(() => wipByPeriod(db, startedAt, unit).map(({ period, wip }) => ({ period, wip })), [db, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

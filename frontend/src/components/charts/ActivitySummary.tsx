@@ -1,24 +1,22 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { ActivityDailyEntry } from "../../types/index.ts";
+import type { Database } from "sql.js";
+import { activityTotals } from "../../db/charts.ts";
 import { GRID_STROKE, AXIS_STROKE, TOOLTIP_STYLE } from "./colors.ts";
 
 interface Props {
-  daily: ActivityDailyEntry[];
+  db: Database;
+  startedAt: string;
 }
 
-export function ActivitySummary({ daily }: Props) {
-  const data = useMemo(() => {
-    const byTitle: Record<string, number> = {};
-    for (const d of daily) {
-      for (const a of d.activities) {
-        byTitle[a.title] = (byTitle[a.title] || 0) + a.minutes;
-      }
-    }
-    return Object.entries(byTitle)
-      .map(([title, minutes]) => ({ title, hours: Math.round((minutes / 60) * 10) / 10 }))
-      .sort((a, b) => b.hours - a.hours);
-  }, [daily]);
+export function ActivitySummary({ db, startedAt }: Props) {
+  const data = useMemo(
+    () =>
+      activityTotals(db, startedAt)
+        .map(({ title, minutes }) => ({ title, hours: Math.round((minutes / 60) * 10) / 10 }))
+        .sort((a, b) => b.hours - a.hours),
+    [db, startedAt],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(250, data.length * 32)}>

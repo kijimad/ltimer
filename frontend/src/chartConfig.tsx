@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { Task, DailyWorkEntry, TimeUnit } from "./types/index.ts";
+import type { Database } from "sql.js";
+import type { Task, TimeUnit } from "./types/index.ts";
 import { LeadTimeBar } from "./components/charts/LeadTimeBar.tsx";
 import { ScatterChart } from "./components/charts/ScatterChart.tsx";
 import { WipTrend } from "./components/charts/WipTrend.tsx";
@@ -26,8 +27,9 @@ import { QueueTimeChart } from "./components/charts/QueueTimeChart.tsx";
 import { InterruptionChart } from "./components/charts/InterruptionChart.tsx";
 
 export interface ChartProps {
+  db: Database;
+  /** 範囲内に触ったタスク。1タスク1行で描くチャートが使う */
   tasks: Task[];
-  dailyWork: DailyWorkEntry[];
   unit: TimeUnit;
   startedAt: string;
   /** データの基準日。generated_at の閲覧者タイムゾーンでの日付 */
@@ -69,13 +71,13 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "histogram",
         title: "Lead Time Distribution",
         desc: "完了タスクのリードタイム分布を期間ごとにスライスして比較。期間間の分布シフトや改善傾向が一目でわかる",
-        render: ({ tasks, unit }) => <HistogramChart tasks={tasks} unit={unit} />,
+        render: ({ db, startedAt, unit }) => <HistogramChart db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "percentile",
         title: "Lead Time Percentile (SLE)",
         desc: "期間ごとの完了タスクのリードタイム50th/85th/95thパーセンタイル推移。85thパーセンタイルがサービスレベル期待値(SLE)となり、予測可能性の指標になる",
-        render: ({ tasks, unit }) => <PercentileChart tasks={tasks} unit={unit} />,
+        render: ({ db, startedAt, unit }) => <PercentileChart db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "batch-size",
@@ -99,37 +101,37 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "wip-trend",
         title: "WIP Trend",
         desc: "期間ごとの仕掛かり(WIP)数の推移。WIPが増え続けていれば着手過多でボトルネックの兆候",
-        render: ({ tasks, unit, startedAt }) => <WipTrend tasks={tasks} unit={unit} startedAt={startedAt} />,
+        render: ({ db, startedAt, unit }) => <WipTrend db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "throughput",
         title: "Throughput",
         desc: "期間ごとのDONE完了数。改善が進んでいるか、スループットが安定しているかを確認する",
-        render: ({ tasks, unit }) => <ThroughputChart tasks={tasks} unit={unit} />,
+        render: ({ db, startedAt, unit }) => <ThroughputChart db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "cfd",
         title: "Cumulative Flow Diagram",
         desc: "期間ごとのStarted/Completed/Closedの累積数を積み上げ面グラフで表示。バンド(帯)の幅がWIP量を示し、広がっていれば仕掛かりが増加している",
-        render: ({ tasks, unit, startedAt }) => <CfdChart tasks={tasks} unit={unit} startedAt={startedAt} />,
+        render: ({ db, startedAt, unit }) => <CfdChart db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "burn",
         title: "Burn Chart",
         desc: "日ごとの累積Started/Completed数とWIP数を表示。Started-Completedの差がWIP。二つの線が離れるほど仕掛かりが溜まっている",
-        render: ({ tasks, startedAt }) => <BurnChart tasks={tasks} startedAt={startedAt} />,
+        render: ({ db, startedAt }) => <BurnChart db={db} startedAt={startedAt} />,
       },
       {
         key: "aging-wip",
         title: "Aging WIP",
         desc: "現在TODOのタスクが最初のクロックインから何日経過しているか。30日超は赤色で警告",
-        render: ({ tasks, asOf }) => <AgingWip tasks={tasks} asOf={asOf} />,
+        render: ({ db, startedAt, asOf }) => <AgingWip db={db} startedAt={startedAt} asOf={asOf} />,
       },
       {
         key: "littles-law",
         title: "Little's Law Validation",
         desc: "リトルの法則(LT = WIP / Throughput)による予測リードタイムと実績リードタイムを比較。乖離が大きい期間はフローが不安定",
-        render: ({ tasks, unit, startedAt }) => <LittlesLaw tasks={tasks} unit={unit} startedAt={startedAt} />,
+        render: ({ db, startedAt, unit }) => <LittlesLaw db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "wait-time",
@@ -141,7 +143,7 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "queue-time",
         title: "Queue Time Distribution",
         desc: "セッションが終わってから同じタスクを再開するまでの間隔の分布。1時間未満は休憩として灰色。長い間隔が多いほど手を離したタスクが滞留している",
-        render: ({ tasks, startedAt }) => <QueueTimeChart tasks={tasks} startedAt={startedAt} />,
+        render: ({ db, startedAt }) => <QueueTimeChart db={db} startedAt={startedAt} />,
       },
     ],
   },
@@ -159,13 +161,13 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "daily-work",
         title: "Daily Work",
         desc: "日ごとにどのタスクに何分投入したかをスタック棒グラフで表示。作業配分のばらつきやマルチタスクの度合いを確認できる",
-        render: ({ dailyWork }) => <DailyWork dailyWork={dailyWork} />,
+        render: ({ db, startedAt }) => <DailyWork db={db} startedAt={startedAt} />,
       },
       {
         key: "interruptions",
         title: "Interruptions",
         desc: "同じ日に別のタスクを挟んで元のタスクに戻った回数 (A→B→A の2回目の A を1回)。多いほど作業が分断されている",
-        render: ({ tasks, unit, startedAt }) => <InterruptionChart tasks={tasks} unit={unit} startedAt={startedAt} />,
+        render: ({ db, startedAt, unit }) => <InterruptionChart db={db} startedAt={startedAt} unit={unit} />,
       },
     ],
   },
@@ -177,21 +179,19 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "net-profit",
         title: "Net Profit (T − OE)",
         desc: "純利益 = スループット(T) - 業務費用(OE)。緑棒が期間あたり完了タスク数(T)、赤線が投入作業時間(OE)。Tが増えつつOEが減るのが理想",
-        render: ({ tasks, dailyWork, unit }) => (
-          <NetProfitTrend tasks={tasks} dailyWork={dailyWork} unit={unit} />
-        ),
+        render: ({ db, startedAt, unit }) => <NetProfitTrend db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "roi",
         title: "ROI (T / I)",
         desc: "投資収益率 = スループット(T) / 在庫(I)。期間あたり完了数÷WIP数。高いほど仕掛かり在庫が効率的にスループットへ変換されている",
-        render: ({ tasks, unit, startedAt }) => <RoiChart tasks={tasks} unit={unit} startedAt={startedAt} />,
+        render: ({ db, startedAt, unit }) => <RoiChart db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "cash-flow",
         title: "Cash Flow",
         desc: "期間ごとの(完了数 - 新規着手数)を累積表示。右肩上がりなら在庫が減りスループットが勝っている健全な状態",
-        render: ({ tasks, unit, startedAt }) => <CashFlowChart tasks={tasks} unit={unit} startedAt={startedAt} />,
+        render: ({ db, startedAt, unit }) => <CashFlowChart db={db} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "bottleneck",
@@ -210,13 +210,13 @@ export const CHART_GROUPS: ChartGroup[] = [
         title: "Alerts",
         desc: "TODO状態かつリードタイム30日超のタスクを警告表示。長期間放置されているタスクの棚卸しに使う",
         full: false,
-        render: ({ tasks }) => <AlertList tasks={tasks} />,
+        render: ({ db, startedAt }) => <AlertList db={db} startedAt={startedAt} />,
       },
       {
         key: "file-table",
         title: "File Summary",
         desc: "ファイルごとのタスク数、TODO/DONE/CLOSE内訳、合計作業時間、平均・最大リードタイム",
-        render: ({ tasks }) => <FileTable tasks={tasks} />,
+        render: ({ db, startedAt }) => <FileTable db={db} startedAt={startedAt} />,
       },
       {
         key: "task-table",

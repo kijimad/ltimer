@@ -1,9 +1,12 @@
 import { useMemo } from "react";
 import { Box, Text } from "@chakra-ui/react";
-import type { ActivityDailyEntry } from "../../types/index.ts";
+import type { Database } from "sql.js";
+import { activityMinutesByDate } from "../../db/charts.ts";
+import { addDays, daysBetween } from "../../dates.ts";
 
 interface Props {
-  daily: ActivityDailyEntry[];
+  db: Database;
+  startedAt: string;
 }
 
 const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
@@ -18,43 +21,22 @@ function getColor(minutes: number): string {
   return "#216e39";
 }
 
-export function ActivityHeatmap({ daily }: Props) {
+export function ActivityHeatmap({ db, startedAt }: Props) {
   const { grid, weeks } = useMemo(() => {
-    const minutesByDate: Record<string, number> = {};
-    for (const d of daily) {
-      minutesByDate[d.date] = d.activities.reduce((s, a) => s + a.minutes, 0);
-    }
+    const byDate = activityMinutesByDate(db, startedAt);
+    if (byDate.length === 0) return { grid: [], weeks: 0 };
+    const minutes = new Map(byDate.map((d) => [d.date, d.minutes]));
 
-    if (daily.length === 0) return { grid: [], weeks: 0 };
-
-    const dates = Object.keys(minutesByDate).sort();
-    const startDate = new Date(dates[0]);
-    const endDate = new Date(dates[dates.length - 1]);
-
-    // Align to Monday
-    const startDay = startDate.getDay();
-    const alignedStart = new Date(startDate);
-    alignedStart.setDate(alignedStart.getDate() - ((startDay + 6) % 7));
-
-    const grid: { date: string; minutes: number; dayOfWeek: number; week: number }[] = [];
-    const current = new Date(alignedStart);
-    let week = 0;
-
-    while (current <= endDate) {
-      const dateStr = current.toISOString().slice(0, 10);
-      const dayOfWeek = (current.getDay() + 6) % 7; // Mon=0
-      grid.push({
-        date: dateStr,
-        minutes: minutesByDate[dateStr] || 0,
-        dayOfWeek,
-        week,
-      });
-      current.setDate(current.getDate() + 1);
-      if (dayOfWeek === 6) week++;
-    }
-
-    return { grid, weeks: week + 1 };
-  }, [daily]);
+    // 先頭の日を含む週の月曜から最後の日まで。曜日は月曜を 0 とする
+    const first = byDate[0].date;
+    const alignedStart = addDays(first, -((new Date(`${first}T00:00:00`).getDay() + 6) % 7));
+    const days = daysBetween(alignedStart, byDate[byDate.length - 1].date) + 1;
+    const grid = Array.from({ length: days }, (_, i) => {
+      const date = addDays(alignedStart, i);
+      return { date, minutes: minutes.get(date) ?? 0, dayOfWeek: i % 7, week: Math.floor(i / 7) };
+    });
+    return { grid, weeks: Math.floor(days / 7) + 1 };
+  }, [db, startedAt]);
 
   if (grid.length === 0) return <Text color="gray.500">No data</Text>;
 

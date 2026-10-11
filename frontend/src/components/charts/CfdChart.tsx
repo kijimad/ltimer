@@ -9,55 +9,18 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Task, TimeUnit } from "../../types/index.ts";
-import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { cumulativeFlow } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
-  unit: TimeUnit;
+  db: Database;
   startedAt: string;
+  unit: TimeUnit;
 }
 
-export function CfdChart({ tasks, unit, startedAt }: Props) {
-  const data = useMemo(() => {
-    const startedAtPeriod = periodKey(startedAt, unit);
-    const startedByPeriod: Record<string, number> = {};
-    const completedByPeriod: Record<string, number> = {};
-    const closedByPeriod: Record<string, number> = {};
-    const periods = new Set<string>();
-
-    for (const t of tasks) {
-      const sp = periodKey(t.first_clock_in, unit);
-      startedByPeriod[sp] = (startedByPeriod[sp] || 0) + 1;
-      periods.add(sp);
-
-      const cd = completedDate(t);
-      if (cd && (t.status === "DONE" || t.status === "CLOSE")) {
-        const cp = periodKey(cd, unit);
-        completedByPeriod[cp] = (completedByPeriod[cp] || 0) + 1;
-        periods.add(cp);
-        if (t.status === "CLOSE") {
-          closedByPeriod[cp] = (closedByPeriod[cp] || 0) + 1;
-        }
-      }
-    }
-
-    const sorted = Array.from(periods).sort();
-    let cumStarted = 0;
-    let cumCompleted = 0;
-    let cumClosed = 0;
-
-    const result: { period: string; Started: number; Completed: number; Closed: number }[] = [];
-    for (const p of sorted) {
-      cumStarted += startedByPeriod[p] || 0;
-      cumCompleted += completedByPeriod[p] || 0;
-      cumClosed += closedByPeriod[p] || 0;
-      if (p >= startedAtPeriod) {
-        result.push({ period: p, Started: cumStarted, Completed: cumCompleted, Closed: cumClosed });
-      }
-    }
-    return result;
-  }, [tasks, unit, startedAt]);
+export function CfdChart({ db, startedAt, unit }: Props) {
+  const data = useMemo(() => cumulativeFlow(db, startedAt, unit), [db, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

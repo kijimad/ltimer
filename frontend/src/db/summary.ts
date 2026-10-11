@@ -2,9 +2,10 @@ import type { Database, SqlValue } from "sql.js";
 import type { TimeRange } from "../types/index.ts";
 import type { GaugeMetric, Summary, TileMetric } from "../metrics.ts";
 import { summaryPeriods, type Period } from "../metrics.ts";
-import { RESUME_GAP_MINUTES } from "../spans.ts";
 import { rows } from "./database.ts";
 
+/** これ未満の間隔はポモドーロの休憩などとみなし、手を離した待ちと区別する */
+export const RESUME_GAP_MINUTES = 60;
 /** 直近この日数以内に CLOCK した TODO をアクティブな仕掛かりとみなす */
 const ACTIVE_WIP_DAYS = 14;
 /** SLO: リードタイム SLO_DAYS 日以内の割合を SLO_TARGET% 以上に保つ */

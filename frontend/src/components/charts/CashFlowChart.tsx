@@ -9,48 +9,18 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import type { Task, TimeUnit } from "../../types/index.ts";
-import { periodKey, completedDate } from "../../hooks/usePeriodKey.ts";
+import type { Database } from "sql.js";
+import type { TimeUnit } from "../../types/index.ts";
+import { cashFlowByPeriod } from "../../db/charts.ts";
 
 interface Props {
-  tasks: Task[];
-  unit: TimeUnit;
+  db: Database;
   startedAt: string;
+  unit: TimeUnit;
 }
 
-export function CashFlowChart({ tasks, unit, startedAt }: Props) {
-  const data = useMemo(() => {
-    const startedAtPeriod = periodKey(startedAt, unit);
-    const started: Record<string, number> = {};
-    const completed: Record<string, number> = {};
-    const periods = new Set<string>();
-
-    for (const t of tasks) {
-      const sp = periodKey(t.first_clock_in, unit);
-      started[sp] = (started[sp] || 0) + 1;
-      periods.add(sp);
-
-      const cd = completedDate(t);
-      if (cd) {
-        const cp = periodKey(cd, unit);
-        completed[cp] = (completed[cp] || 0) + 1;
-        periods.add(cp);
-      }
-    }
-
-    const sorted = Array.from(periods).sort();
-    let cumulative = 0;
-
-    const result: { period: string; CashFlow: number }[] = [];
-    for (const p of sorted) {
-      const net = (completed[p] || 0) - (started[p] || 0);
-      cumulative += net;
-      if (p >= startedAtPeriod) {
-        result.push({ period: p, CashFlow: cumulative });
-      }
-    }
-    return result;
-  }, [tasks, unit, startedAt]);
+export function CashFlowChart({ db, startedAt, unit }: Props) {
+  const data = useMemo(() => cashFlowByPeriod(db, startedAt, unit), [db, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

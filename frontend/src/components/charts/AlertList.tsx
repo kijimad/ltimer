@@ -1,19 +1,17 @@
 import { useMemo } from "react";
 import { Box, Text } from "@chakra-ui/react";
-import type { Task } from "../../types/index.ts";
+import type { Database } from "sql.js";
+import { alertTodos } from "../../db/charts.ts";
 import { shortName } from "../../hooks/usePeriodKey.ts";
 import { AGING_THRESHOLD_DAYS } from "./colors.ts";
 
 interface Props {
-  tasks: Task[];
+  db: Database;
+  startedAt: string;
 }
 
-export function AlertList({ tasks }: Props) {
-  const alerts = useMemo(() => {
-    return tasks
-      .filter((t) => t.status === "TODO" && t.lead_time_days > AGING_THRESHOLD_DAYS)
-      .sort((a, b) => b.lead_time_days - a.lead_time_days);
-  }, [tasks]);
+export function AlertList({ db, startedAt }: Props) {
+  const alerts = useMemo(() => alertTodos(db, startedAt, AGING_THRESHOLD_DAYS), [db, startedAt]);
 
   if (alerts.length === 0) return <Text color="gray.500">No alerts</Text>;
 
