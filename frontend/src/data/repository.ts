@@ -20,6 +20,8 @@ export interface LeadTimeHistogram {
 
 export interface WipPoint {
   period: string;
+  /** 範囲内に入る日数。最初と最後の期間は短いことがある */
+  days: number;
   wip: number;
   throughput: number;
   avgLead: number | null;

@@ -1,7 +1,7 @@
 import type { TimeRange } from "./types/index.ts";
 import { rangeDates } from "./hooks/useTimeRange.ts";
 import { addDays, daysBetween } from "./dates.ts";
-import type { WeekdayHourMinutes } from "./data/repository.ts";
+import type { WeekdayHourMinutes, WipPoint } from "./data/repository.ts";
 
 export const HISTORY_PERIODS = 12;
 
@@ -105,4 +105,9 @@ export function dailyRhythm(cells: WeekdayHourMinutes[], startedAt: string, fini
     });
     return point;
   });
+}
+
+/** リトルの法則で、期間の終わりの WIP と1日あたりのスループットからリードタイム (日) を予測する */
+export function predictedLeadTime({ days, wip, throughput }: Pick<WipPoint, "days" | "wip" | "throughput">): number | null {
+  return throughput > 0 ? wip / (throughput / days) : null;
 }

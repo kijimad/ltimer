@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { summaryPeriods, scaleFrom, bandOf, dailyRhythm } from "./metrics.ts";
+import { summaryPeriods, scaleFrom, bandOf, dailyRhythm, predictedLeadTime } from "./metrics.ts";
 
 describe("summaryPeriods", () => {
   it("starts with the selected range and continues with contiguous past periods", () => {
@@ -72,5 +72,17 @@ describe("dailyRhythm", () => {
   it("returns zero for weekdays absent from the range", () => {
     // 01-01 (月) 〜 01-02 (火) には日曜がない
     expect(dailyRhythm([{ weekday: 6, hour: 1, minutes: 10 }], "2024-01-01", "2024-01-02")[1].日).toBe(0);
+  });
+});
+
+describe("predictedLeadTime", () => {
+  it("divides WIP by the daily throughput so the prediction is in days", () => {
+    // 1週間に7件終わるなら1日1件。WIP 3 件は3日で捌ける
+    expect(predictedLeadTime({ days: 7, wip: 3, throughput: 7 })).toBe(3);
+    expect(predictedLeadTime({ days: 30, wip: 2, throughput: 6 })).toBe(10);
+  });
+
+  it("returns null without completions", () => {
+    expect(predictedLeadTime({ days: 7, wip: 3, throughput: 0 })).toBeNull();
   });
 });

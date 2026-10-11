@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import type { TimeUnit } from "../../types/index.ts";
 import type { TaskRepository } from "../../data/repository.ts";
+import { predictedLeadTime } from "../../metrics.ts";
 
 interface Props {
   repo: TaskRepository;
@@ -15,12 +16,15 @@ interface Props {
 export function LittlesLaw({ repo, startedAt, unit }: Props) {
   const data = useMemo(
     () =>
-      repo.wipByPeriod(startedAt, unit).map(({ period, wip, throughput, avgLead }) => ({
-        period,
-        "Actual LT": avgLead === null ? null : Math.round(avgLead * 10) / 10,
-        "Predicted (WIP/T)": throughput > 0 ? Math.round((wip / throughput) * 10) / 10 : null,
-        WIP: wip,
-      })),
+      repo.wipByPeriod(startedAt, unit).map((p) => {
+        const predicted = predictedLeadTime(p);
+        return {
+          period: p.period,
+          "Actual LT": p.avgLead === null ? null : Math.round(p.avgLead * 10) / 10,
+          "Predicted (WIP/T)": predicted === null ? null : Math.round(predicted * 10) / 10,
+          WIP: p.wip,
+        };
+      }),
     [repo, startedAt, unit],
   );
 

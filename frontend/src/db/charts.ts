@@ -1,6 +1,7 @@
 import type { Database, SqlValue } from "sql.js";
 import type { Task, TaskClock, TimeUnit, DailyWorkEntry, DraftEntry } from "../types/index.ts";
 import { rows } from "./database.ts";
+import { daysBetween } from "../dates.ts";
 import { RESUME_GAP_MINUTES, TASK_METRICS, FLOW_METRICS, leadTimePercentile, series, evaluate, calendarPeriods } from "./metricDefs.ts";
 import type { FileSummaryRow, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
 
@@ -107,7 +108,9 @@ export function leadTimeHistogram(db: Database, startedAt: string, unit: TimeUni
 export function wipByPeriod(db: Database, startedAt: string, unit: TimeUnit): WipPoint[] {
   const periods = calendarPeriods(db, startedAt, unit);
   const [wip, throughput, avgLead] = [FLOW_METRICS.wip, TASK_METRICS.throughput, FLOW_METRICS.avgLeadTime].map((def) => series(db, def, periods));
-  return periods.map(({ period }, i) => ({ period, wip: wip[i] ?? 0, throughput: throughput[i] ?? 0, avgLead: avgLead[i] }));
+  return periods.map(({ period, startedAt, finishedAt }, i) => ({
+    period, days: daysBetween(startedAt, finishedAt) + 1, wip: wip[i] ?? 0, throughput: throughput[i] ?? 0, avgLead: avgLead[i],
+  }));
 }
 
 /** 開始・完了・CLOSE を範囲の始まりから累積する */
@@ -128,7 +131,6 @@ export function burnByDate(db: Database, startedAt: string): BurnPoint[] {
   return flow.map(({ period, Started, Completed }, i) => ({ date: period, Started, Completed, WIP: wip[i] ?? 0 }));
 }
 
-/** 完了を +1、開始を -1 として範囲の始まりから累積する */
 export function cashFlowByPeriod(db: Database, startedAt: string, unit: TimeUnit): CashFlowPoint[] {
   return cumulativeFlow(db, startedAt, unit).map(({ period, Started, Completed }) => ({ period, CashFlow: Completed - Started }));
 }
@@ -192,17 +194,14 @@ export function queueTimeHistogram(db: Database, startedAt: string): { bucket: s
 export function interruptionsByPeriod(db: Database, startedAt: string, unit: TimeUnit): { period: string; count: number }[] {
   return q(
     db,
+    // 直前と別のタスクで、その日に前にも触っていれば、触ったのは直前より前になる
     `WITH s AS (
        SELECT substr(start, 1, 10) AS d, task_id,
-         row_number() OVER (PARTITION BY substr(start, 1, 10) ORDER BY start, seq) AS i,
-         lag(task_id) OVER (PARTITION BY substr(start, 1, 10) ORDER BY start, seq) AS prev
-       FROM clocks_local
+         lag(task_id) OVER (PARTITION BY substr(start, 1, 10) ORDER BY start, seq) AS prev,
+         row_number() OVER (PARTITION BY substr(start, 1, 10), task_id ORDER BY start, seq) AS nth
+       FROM clocks_local WHERE substr(start, 1, 10) >= ?1
      ),
-     daily AS (
-       SELECT d, sum(prev IS NOT NULL AND task_id <> prev
-         AND EXISTS (SELECT 1 FROM s e WHERE e.d = s.d AND e.task_id = s.task_id AND e.i < s.i - 1)) AS n
-       FROM s GROUP BY d
-     )
+     daily AS (SELECT d, sum(nth > 1 AND task_id <> prev) AS n FROM s GROUP BY d)
      SELECT ${calendarPeriod(unit)} AS period, coalesce(sum(n), 0) AS count
      FROM calendar c LEFT JOIN daily ON daily.d = c.date WHERE c.date >= ?1 GROUP BY period ORDER BY period`,
     [startedAt],

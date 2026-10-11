@@ -206,10 +206,10 @@ describe("wipByPeriod", () => {
     const active = { ...task("active", [c("2024-01-03 09:00", "2024-01-03 09:25")]), status: "TODO" as const };
     const done = { ...task("done", [c("2024-01-02 09:00", "2024-01-02 09:25")]), closed_at: "2024-01-10 10:00" };
     expect(wipByPeriod(db([stale, active, done]), "2024-01-01", "week").slice(0, 3)).toEqual([
-      { period: "2024-01-01", wip: 2, throughput: 0, avgLead: null },
-      { period: "2024-01-08", wip: 1, throughput: 1, avgLead: 0 },
+      { period: "2024-01-01", days: 7, wip: 2, throughput: 0, avgLead: null },
+      { period: "2024-01-08", days: 7, wip: 1, throughput: 1, avgLead: 0 },
       // 01-03 の CLOCK は 01-21 から見て14日より前
-      { period: "2024-01-15", wip: 0, throughput: 0, avgLead: null },
+      { period: "2024-01-15", days: 7, wip: 0, throughput: 0, avgLead: null },
     ]);
   });
 });
@@ -222,6 +222,14 @@ describe("cumulative flow", () => {
     { ...task("dropped", [c("2024-01-10 09:00", "2024-01-10 09:25")]), status: "CLOSE" as const, closed_at: "2024-01-11 10:00" },
   ];
 
+
+  it("counts only the days inside the range for partial periods", () => {
+    const t = task("a", [c("2024-01-03 09:00", "2024-01-03 09:25")]);
+    const points = wipByPeriod(db([t]), "2024-01-03", "week");
+    expect(points[0].days).toBe(5);
+    // 生成日 03-01 (金) で終わる
+    expect(points.at(-1)).toMatchObject({ period: "2024-02-26", days: 5 });
+  });
   it("accumulates starts and completions from startedAt", () => {
     expect(cumulativeFlow(db(tasks), "2024-01-01", "week").slice(0, 3)).toEqual([
       { period: "2024-01-01", Started: 0, Completed: 1, Closed: 0 },

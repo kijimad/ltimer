@@ -129,7 +129,7 @@ export function evaluate(db: Database, def: MetricDef, p: Period): number | null
   return series(db, def, [p])[0];
 }
 
-/** 指標を期間の並びに当てはめる。値のない期間は null。日ごとの系列は期間が多いので、文は一度だけ準備する */
+/** 指標を期間の並びに当てはめる。値のない期間は null */
 export function series(db: Database, def: MetricDef, periods: Period[]): (number | null)[] {
   const stmt = db.prepare(def.sql);
   try {

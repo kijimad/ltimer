@@ -133,7 +133,7 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "littles-law",
         title: "Little's Law Validation",
-        desc: "リトルの法則(LT = WIP / Throughput)による予測リードタイムと実績リードタイムを比較。乖離が大きい期間はフローが不安定",
+        desc: "リトルの法則(LT = WIP / 1日あたりのThroughput)による予測リードタイムと実績リードタイムを比較。乖離が大きい期間はフローが不安定",
         render: ({ repo, startedAt, unit }) => <LittlesLaw repo={repo} startedAt={startedAt} unit={unit} />,
       },
       {
