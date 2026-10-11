@@ -8,14 +8,14 @@ import {
   Box, Heading, Text, SimpleGrid, Table, Badge,
 } from "@chakra-ui/react";
 import { useTimeRange, rangeDates } from "../hooks/useTimeRange.ts";
-import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
+import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
 import { asOfDate, daysBetween, formatGeneratedAt } from "../dates.ts";
 import { draftSummary } from "../metrics.ts";
 
 export function DraftPage() {
   const { data, error } = useDraftData();
-  const { range, setRange } = useTimeRange();
+  const { range } = useTimeRange();
   const [sortKey, setSortKey] = useState<string>("lead_time_days");
   const [sortDir, setSortDir] = useState(-1);
 
@@ -53,7 +53,7 @@ export function DraftPage() {
     });
   }, [filtered, sortKey, sortDir]);
 
-  const summary = useMemo(() => (data && asOf ? draftSummary(data.entries, asOf) : null), [data, asOf]);
+  const summary = useMemo(() => (data && asOf ? draftSummary(data.entries, asOf, range) : null), [data, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
@@ -90,7 +90,7 @@ export function DraftPage() {
         Generated: {formatGeneratedAt(data.generated_at)}
       </Text>
       <SummaryRow summary={summary} />
-      <TimeRangeSwitch range={range} onChange={setRange} startedAt={startedAt} finishedAt={finishedAt} />
+      <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
 
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={5} mb={5}>
         {barData.length > 0 && (

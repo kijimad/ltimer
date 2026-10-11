@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TasksPage } from "./TasksPage.tsx";
 import { RAW_WORKFLOW_DATA } from "../test/fixtures.ts";
 import { renderWithRouter } from "../test/render.tsx";
@@ -58,5 +59,15 @@ describe("TasksPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("img", { name: "スループット" })).toBeInTheDocument();
     });
+  });
+
+  it("recomputes the summary for the selected range", async () => {
+    renderWithRouter(<TasksPage />);
+    const throughput = () => within(screen.getByRole("img", { name: "スループット" }).parentElement!);
+    const value = (n: string) => (_: string, el: Element | null) => el?.textContent === `${n}件`;
+    // 02-20 に完了した DONE が 1件。1m (02-01〜03-01) には入り 1w (02-23〜03-01) には入らない
+    await waitFor(() => expect(throughput().getByText(value("1"))).toBeInTheDocument());
+    await userEvent.click(screen.getByText("前週"));
+    expect(throughput().getByText(value("0"))).toBeInTheDocument();
   });
 });

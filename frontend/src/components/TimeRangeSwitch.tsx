@@ -1,5 +1,7 @@
+import { createPortal } from "react-dom";
 import type { TimeRange } from "../types/index.ts";
 import { HStack, Text, Button } from "@chakra-ui/react";
+import { useTimeRange } from "../hooks/useTimeRange.ts";
 
 const OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "1w", label: "前週" },
@@ -20,7 +22,7 @@ export function TimeRangeSwitch({
   finishedAt?: string;
 }) {
   return (
-    <HStack gap={3} mb={4}>
+    <HStack gap={3} wrap="wrap">
       <Text fontSize="xs" color="gray.500">集計範囲:</Text>
       {OPTIONS.map((o) => (
         <Button
@@ -39,5 +41,15 @@ export function TimeRangeSwitch({
         </Text>
       )}
     </HStack>
+  );
+}
+
+/** 範囲の日付はページのデータ生成日で決まるので、ページからナビゲーションバーへ描画する */
+export function NavTimeRangeSwitch({ startedAt, finishedAt }: { startedAt: string; finishedAt: string }) {
+  const { range, setRange, slot } = useTimeRange();
+  if (!slot) return null;
+  return createPortal(
+    <TimeRangeSwitch range={range} onChange={setRange} startedAt={startedAt} finishedAt={finishedAt} />,
+    slot,
   );
 }

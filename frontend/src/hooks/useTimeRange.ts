@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { createContext, useContext } from "react";
 import type { TimeRange, TimeUnit } from "../types/index.ts";
 import { addDays, addMonths } from "../dates.ts";
 
-export function useTimeRange() {
-  const [range, setRange] = useState<TimeRange>("1m");
-  return { range, setRange };
+export interface TimeRangeState {
+  range: TimeRange;
+  setRange: (r: TimeRange) => void;
+  /** 集計範囲スイッチを描画するナビゲーションバー内の要素 */
+  slot: HTMLElement | null;
+}
+
+export const TimeRangeContext = createContext<TimeRangeState | null>(null);
+
+export function useTimeRange(): TimeRangeState {
+  const state = useContext(TimeRangeContext);
+  if (!state) throw new Error("useTimeRange must be used within TimeRangeProvider");
+  return state;
 }
 
 export function rangeDates(range: TimeRange, asOf: string): { startedAt: string; finishedAt: string } {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { taskSummary, draftSummary, activitySummary, scaleFrom, bandOf } from "./metrics.ts";
+import { taskSummary, draftSummary, activitySummary, summaryPeriods, scaleFrom, bandOf } from "./metrics.ts";
 import type { Task, DraftEntry, ActivityDailyEntry } from "./types/index.ts";
 import type { Summary } from "./metrics.ts";
 
@@ -29,36 +29,39 @@ const gauge = (s: Summary, key: string) => s.gauges.find((g) => g.key === key)!;
 const tile = (s: Summary, key: string) => s.tiles.find((t) => t.key === key)!;
 
 describe("taskSummary", () => {
-  it("counts only DONE completed in the last 28 days as throughput", () => {
+  it("counts only DONE completed in the selected range as throughput", () => {
+    // 1m の範囲は 2024-02-01〜03-01 (両端を含む)
     const s = taskSummary([
-      task({ closed_at: "2024-02-03 10:00" }),
-      task({ closed_at: "2024-02-02 10:00" }),
+      task({ closed_at: "2024-02-01 10:00" }),
+      task({ closed_at: "2024-01-31 10:00" }),
       task({ status: "CLOSE" }),
-    ], TODAY);
+    ], TODAY, "1m");
     expect(gauge(s, "throughput").value).toBe(1);
   });
 
-  it("samples weekly history", () => {
-    const g = gauge(taskSummary([task({ closed_at: "2024-02-01 10:00" })], TODAY), "throughput");
+  it("samples the same-length past periods without overlap", () => {
+    const g = gauge(
+      taskSummary([task({ first_clock_in: "2023-01-01 09:00" }), task({ closed_at: "2024-01-15 10:00" })], TODAY, "1m"),
+      "throughput",
+    );
     expect(g.history).toHaveLength(12);
-    // history[i] は (i+1) 週前時点の直近28日。02-01 の完了は 3 週前 (01-06〜02-02) まで含まれる
-    expect(g.history.slice(0, 5)).toEqual([1, 1, 1, 1, 0]);
+    expect(g.history.slice(0, 3)).toEqual([1, 0, 0]);
   });
 
   it("computes p85 lead time over 28 days", () => {
     const tasks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 20].map((lt) => task({ lead_time_days: lt }));
-    expect(gauge(taskSummary(tasks, TODAY), "lead-time").value).toBe(9);
+    expect(gauge(taskSummary(tasks, TODAY, "1m"), "lead-time").value).toBe(9);
   });
 
   it("returns null lead time when nothing is done", () => {
-    expect(gauge(taskSummary([], TODAY), "lead-time").value).toBeNull();
+    expect(gauge(taskSummary([], TODAY, "1m"), "lead-time").value).toBeNull();
   });
 
   it("computes median flow efficiency excluding same-day tasks", () => {
     const s = taskSummary([
       task({ lead_time_days: 1, total_minutes: 144 }),
       task({ lead_time_days: 0, total_minutes: 600 }),
-    ], TODAY);
+    ], TODAY, "1m");
     expect(gauge(s, "flow-efficiency").value).toBe(10);
   });
 
@@ -66,7 +69,7 @@ describe("taskSummary", () => {
     const s = taskSummary([
       task({ status: "TODO", closed_at: null, last_clock_out: "2024-02-20 10:00" }),
       task({ status: "TODO", closed_at: null, last_clock_out: "2024-01-01 10:00" }),
-    ], TODAY);
+    ], TODAY, "1m");
     expect(tile(s, "active-wip").value).toBe(1);
     expect(tile(s, "stale-todo").value).toBe(1);
   });
@@ -74,26 +77,28 @@ describe("taskSummary", () => {
 
 describe("draftSummary", () => {
   const entries = [
+    draft({ created: "2023-01-01", published: "2023-02-01", lead_time_days: 31, status: "published" }),
     draft({ created: "2024-01-01" }),
-    draft({ created: "2024-02-01", published: "2024-02-20", lead_time_days: 19, status: "published" }),
+    draft({ created: "2024-01-10", published: "2024-02-20", lead_time_days: 41, status: "published" }),
   ];
 
-  it("counts drafts open at each point in time", () => {
-    const g = gauge(draftSummary(entries, TODAY), "open-drafts");
+  it("counts drafts open at the end of each period", () => {
+    const g = gauge(draftSummary(entries, TODAY, "1m"), "open-drafts");
     expect(g.value).toBe(1);
-    expect(g.history[1]).toBe(2);
+    // 1つ前の期間の終点 01-31 では 2 本目もまだ下書き
+    expect(g.history[0]).toBe(2);
   });
 
   it("computes median publish lead time", () => {
-    expect(gauge(draftSummary(entries, TODAY), "publish-lead-time").value).toBe(19);
+    expect(gauge(draftSummary(entries, TODAY, "1m"), "publish-lead-time").value).toBe(41);
   });
 
   it("returns null publish lead time when nothing was published in the window", () => {
-    expect(gauge(draftSummary([draft({ created: "2024-01-01" })], TODAY), "publish-lead-time").value).toBeNull();
+    expect(gauge(draftSummary([draft({ created: "2024-01-01" })], TODAY, "1m"), "publish-lead-time").value).toBeNull();
   });
 
   it("computes oldest open draft age", () => {
-    expect(gauge(draftSummary(entries, TODAY), "oldest-draft").value).toBe(60);
+    expect(gauge(draftSummary(entries, TODAY, "1m"), "oldest-draft").value).toBe(60);
   });
 });
 
@@ -103,14 +108,15 @@ describe("activitySummary", () => {
     { date: "2024-02-10", activities: [{ title: "x", minutes: 30 }, { title: "y", minutes: 30 }] },
     { date: TODAY, activities: [{ title: "x", minutes: 60 }] },
   ];
-  const s = activitySummary(daily, TODAY);
+  const s = activitySummary(daily, TODAY, "1m");
 
-  it("sums hours over 28 days", () => {
+  it("sums hours over the selected range", () => {
     expect(gauge(s, "hours").value).toBe(2);
   });
 
   it("computes done rate against activities done in the window", () => {
-    expect(gauge(s, "done-rate").value).toBeCloseTo((3 / 56) * 100, 5);
+    // 対象 x, y × 範囲の 30 日 (02-01〜03-01)
+    expect(gauge(s, "done-rate").value).toBeCloseTo((3 / 60) * 100, 5);
   });
 
   it("counts active days", () => {
@@ -118,7 +124,27 @@ describe("activitySummary", () => {
   });
 
   it("returns null done rate when no activity in the window", () => {
-    expect(gauge(activitySummary([], TODAY), "done-rate").value).toBeNull();
+    expect(gauge(activitySummary([], TODAY, "1m"), "done-rate").value).toBeNull();
+  });
+});
+
+describe("summaryPeriods", () => {
+  it("starts with the selected range and continues with contiguous past periods", () => {
+    const periods = summaryPeriods("1m", "2026-10-11", "2020-01-01");
+    expect(periods).toHaveLength(13);
+    expect(periods.slice(0, 3)).toEqual([
+      { startedAt: "2026-09-11", finishedAt: "2026-10-11" },
+      { startedAt: "2026-08-10", finishedAt: "2026-09-10" },
+      { startedAt: "2026-07-09", finishedAt: "2026-08-09" },
+    ]);
+  });
+
+  it("excludes past periods starting before the data", () => {
+    expect(summaryPeriods("1m", "2026-10-11", "2026-08-01").map((p) => p.startedAt)).toEqual(["2026-09-11", "2026-08-10"]);
+  });
+
+  it("uses weeks for 1w", () => {
+    expect(summaryPeriods("1w", "2026-10-11", "2020-01-01")[1]).toEqual({ startedAt: "2026-09-26", finishedAt: "2026-10-03" });
   });
 });
 
@@ -165,7 +191,7 @@ describe("taskSummary resume wait", () => {
           { start: "2024-02-27 16:45", end: "2024-02-27 17:10", minutes: 25 },
         ],
       }),
-    ], TODAY);
+    ], TODAY, "1m");
     // 2h, 4h, 24h の中央値
     expect(gauge(s, "resume-wait").value).toBe(4);
   });
@@ -177,7 +203,7 @@ describe("taskSummary SLO / CLOSE rate", () => {
     task({ lead_time_days: 10 }),
     task({ status: "CLOSE" }),
   ];
-  const s = taskSummary(tasks, TODAY);
+  const s = taskSummary(tasks, TODAY, "1m");
 
   it("computes SLO attainment over DONE tasks", () => {
     expect(gauge(s, "slo").value).toBe(90);

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Box, Heading, Text, SimpleGrid } from "@chakra-ui/react";
 import { useActivityData } from "../hooks/useActivityData.ts";
 import { useTimeRange, rangeDates, unitForRange } from "../hooks/useTimeRange.ts";
-import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
+import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
 import { ActivitySummary } from "../components/charts/ActivitySummary.tsx";
 import { ActivityTrend } from "../components/charts/ActivityTrend.tsx";
@@ -14,7 +14,7 @@ import { activitySummary } from "../metrics.ts";
 
 export function ActivityPage() {
   const { data, error } = useActivityData();
-  const { range, setRange } = useTimeRange();
+  const { range } = useTimeRange();
 
   const unit = unitForRange(range);
 
@@ -27,7 +27,7 @@ export function ActivityPage() {
     return { daily };
   }, [data, dates]);
 
-  const summary = useMemo(() => (data && asOf ? activitySummary(data.daily, asOf) : null), [data, asOf]);
+  const summary = useMemo(() => (data && asOf ? activitySummary(data.daily, asOf, range) : null), [data, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
@@ -41,7 +41,7 @@ export function ActivityPage() {
         Generated: {formatGeneratedAt(data.generated_at)}
       </Text>
       <SummaryRow summary={summary} />
-      <TimeRangeSwitch range={range} onChange={setRange} startedAt={startedAt} finishedAt={finishedAt} />
+      <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={5}>
         <ChartCard title="Activity Summary" desc="各アクティビティの累計時間" full>
           <ActivitySummary daily={filtered.daily} />

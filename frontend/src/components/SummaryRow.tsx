@@ -1,5 +1,5 @@
 import { Box, SimpleGrid, Text } from "@chakra-ui/react";
-import { SUMMARY_WINDOW_DAYS, type Summary } from "../metrics.ts";
+import { HISTORY_PERIODS, type Summary } from "../metrics.ts";
 import { Gauge } from "./Gauge.tsx";
 
 export function SummaryRow({ summary }: { summary: Summary }) {
@@ -22,7 +22,7 @@ export function SummaryRow({ summary }: { summary: Summary }) {
         )}
       </SimpleGrid>
       <Text fontSize="xs" color="gray.400" mt={1}>
-        集計: 直近{SUMMARY_WINDOW_DAYS}日 / 目盛り: 過去12週の自分の分布 (両端 p10〜p90 / 黄帯 p25〜p75)
+        集計: 選択中の範囲 / 目盛り: 同じ長さの過去の期間 (最大{HISTORY_PERIODS}) の分布 (両端 p10〜p90 / 黄帯 p25〜p75)
       </Text>
     </Box>
   );

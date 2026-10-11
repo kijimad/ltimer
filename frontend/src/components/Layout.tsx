@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { Flex, Box } from "@chakra-ui/react";
+import { TimeRangeProvider } from "./TimeRangeProvider.tsx";
 
 const NAV_ITEMS = [
   { to: "/", label: "Tasks", end: true },
@@ -9,13 +11,16 @@ const NAV_ITEMS = [
 ];
 
 export function Layout() {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
-    <>
+    <TimeRangeProvider slot={slot}>
       <Flex
         as="nav"
         direction="row"
         align="center"
-        gap={6}
+        wrap="wrap"
+        columnGap={6}
+        rowGap={2}
         px={5}
         py={3}
         borderBottom="1px solid"
@@ -39,8 +44,9 @@ export function Layout() {
             )}
           </NavLink>
         ))}
+        <Box ref={setSlot} ml="auto" />
       </Flex>
       <Outlet />
-    </>
+    </TimeRangeProvider>
   );
 }

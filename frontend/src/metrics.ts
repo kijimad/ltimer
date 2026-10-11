@@ -1,16 +1,15 @@
-import type { Task, DraftEntry, ActivityDailyEntry } from "./types/index.ts";
+import type { Task, DraftEntry, ActivityDailyEntry, TimeRange } from "./types/index.ts";
 import { completedDate } from "./hooks/usePeriodKey.ts";
+import { rangeDates } from "./hooks/useTimeRange.ts";
 import { addDays, daysBetween } from "./dates.ts";
 import { sessionGaps, RESUME_GAP_MINUTES } from "./spans.ts";
 
 /** 直近この日数以内に CLOCK した TODO をアクティブな仕掛かりとみなす */
 const ACTIVE_WIP_DAYS = 14;
-export const SUMMARY_WINDOW_DAYS = 28;
 /** SLO: リードタイム SLO_DAYS 日以内の割合を SLO_TARGET% 以上に保つ */
 const SLO_DAYS = 3;
 const SLO_TARGET = 90;
-/** 目盛りを決める過去分布のサンプル期間 */
-const HISTORY_WEEKS = 12;
+export const HISTORY_PERIODS = 12;
 
 export interface GaugeMetric {
   key: string;
@@ -55,82 +54,106 @@ function inWindow(date: string, ref: string, days: number): boolean {
   return date > addDays(ref, -days) && date <= ref;
 }
 
-/** 28日窓は1日ずらしてもほぼ同じ値になるので、分布は週次でサンプルする */
-function history(today: string, f: (ref: string) => number | null): number[] {
-  return Array.from({ length: HISTORY_WEEKS }, (_, i) => f(addDays(today, -7 * (i + 1))))
-    .filter((v): v is number => v !== null);
+/** チャートの絞り込みと同じく両端を含む */
+interface Period {
+  startedAt: string;
+  finishedAt: string;
+}
+
+function inPeriod(date: string, p: Period): boolean {
+  return date >= p.startedAt && date <= p.finishedAt;
+}
+
+/**
+ * 選択中の範囲と、同じ長さで重ならない過去の期間。重なる窓だと分布がほぼ1点に潰れる。
+ * データの最初の日より前から始まる期間は件数が欠けて 0 寄りになるので含めない
+ */
+export function summaryPeriods(range: TimeRange, asOf: string, dataStart: string): Period[] {
+  const result = [rangeDates(range, asOf)];
+  for (let i = 0; i < HISTORY_PERIODS; i++) {
+    const p = rangeDates(range, addDays(result[i].startedAt, -1));
+    if (p.startedAt < dataStart) break;
+    result.push(p);
+  }
+  return result;
+}
+
+function earliest(dates: string[]): string {
+  return dates.reduce((a, b) => (b < a ? b : a), dates[0] ?? "");
 }
 
 function gauge(
-  today: string,
-  f: (ref: string) => number | null,
+  periods: Period[],
+  f: (p: Period) => number | null,
   meta: Omit<GaugeMetric, "value" | "history">,
 ): GaugeMetric {
-  return { ...meta, value: f(today), history: history(today, f) };
+  const [current, ...past] = periods;
+  return { ...meta, value: f(current), history: past.map(f).filter((v): v is number => v !== null) };
 }
 
-function finishedInWindow(tasks: Task[], ref: string, days: number): Task[] {
+function finishedIn(tasks: Task[], p: Period): Task[] {
   return tasks.filter((t) => {
     const cd = completedDate(t);
-    return cd !== null && inWindow(cd, ref, days);
+    return cd !== null && inPeriod(cd, p);
   });
 }
 
-function doneInWindow(tasks: Task[], ref: string, days: number): Task[] {
-  return finishedInWindow(tasks, ref, days).filter((t) => t.status === "DONE");
+function doneIn(tasks: Task[], p: Period): Task[] {
+  return finishedIn(tasks, p).filter((t) => t.status === "DONE");
 }
 
-export function taskSummary(tasks: Task[], today: string): Summary {
-  const throughput = (ref: string) => doneInWindow(tasks, ref, SUMMARY_WINDOW_DAYS).length;
-  const leadTimeP85 = (ref: string) => {
-    const lts = doneInWindow(tasks, ref, SUMMARY_WINDOW_DAYS).map((t) => t.lead_time_days).sort((a, b) => a - b);
+export function taskSummary(tasks: Task[], asOf: string, range: TimeRange): Summary {
+  const periods = summaryPeriods(range, asOf, earliest(tasks.map((t) => t.first_clock_in.slice(0, 10))));
+  const throughput = (p: Period) => doneIn(tasks, p).length;
+  const leadTimeP85 = (p: Period) => {
+    const lts = doneIn(tasks, p).map((t) => t.lead_time_days).sort((a, b) => a - b);
     return lts.length > 0 ? percentile(lts, 85) : null;
   };
-  const flowEfficiency = (ref: string) => {
-    const effs = doneInWindow(tasks, ref, SUMMARY_WINDOW_DAYS)
+  const flowEfficiency = (p: Period) => {
+    const effs = doneIn(tasks, p)
       .filter((t) => t.lead_time_days > 0)
       .map((t) => (t.total_minutes / (t.lead_time_days * 24 * 60)) * 100)
       .sort((a, b) => a - b);
     return effs.length > 0 ? percentile(effs, 50) : null;
   };
-  const sloAttainment = (ref: string) => {
-    const done = doneInWindow(tasks, ref, SUMMARY_WINDOW_DAYS);
+  const sloAttainment = (p: Period) => {
+    const done = doneIn(tasks, p);
     return done.length > 0 ? (done.filter((t) => t.lead_time_days <= SLO_DAYS).length / done.length) * 100 : null;
   };
   const resumeGaps = tasks.flatMap(sessionGaps).filter((g) => g.minutes >= RESUME_GAP_MINUTES);
-  const resumeWait = (ref: string) => {
+  const resumeWait = (p: Period) => {
     const hours = resumeGaps
-      .filter((g) => inWindow(g.resumedAt.slice(0, 10), ref, SUMMARY_WINDOW_DAYS))
+      .filter((g) => inPeriod(g.resumedAt.slice(0, 10), p))
       .map((g) => g.minutes / 60)
       .sort((a, b) => a - b);
     return hours.length > 0 ? percentile(hours, 50) : null;
   };
-  const closeRate = (ref: string) => {
-    const finished = finishedInWindow(tasks, ref, SUMMARY_WINDOW_DAYS);
+  const closeRate = (p: Period) => {
+    const finished = finishedIn(tasks, p);
     return finished.length > 0 ? (finished.filter((t) => t.status === "CLOSE").length / finished.length) * 100 : null;
   };
   // TODO は現在の status しか持たず過去時点を復元できないので、分布のないタイルにする
   const todos = tasks.filter((t) => t.status === "TODO");
-  const activeWip = todos.filter((t) => inWindow(t.last_clock_out.slice(0, 10), today, ACTIVE_WIP_DAYS)).length;
+  const activeWip = todos.filter((t) => inWindow(t.last_clock_out.slice(0, 10), asOf, ACTIVE_WIP_DAYS)).length;
 
   return {
     gauges: [
-      gauge(today, throughput, {
+      gauge(periods, throughput, {
         key: "throughput", label: "スループット", desc: "DONE 数", unit: "件", higherIsBetter: true,
       }),
-      gauge(today, leadTimeP85, {
+      gauge(periods, leadTimeP85, {
         key: "lead-time", label: "リードタイム p85", desc: "DONE のリードタイム (SLE)", unit: "日", higherIsBetter: false,
       }),
-      gauge(today, sloAttainment, {
+      gauge(periods, sloAttainment, {
         key: "slo", label: "SLO 達成率", desc: `DONE のうち ${SLO_DAYS}日以内 (目標 ${SLO_TARGET}%)`, unit: "%", higherIsBetter: true, target: SLO_TARGET,
       }),
-      gauge(today, flowEfficiency, {
+      gauge(periods, flowEfficiency, {
         key: "flow-efficiency", label: "フロー効率", desc: "DONE の実作業時間÷リードタイム (中央値)", unit: "%", higherIsBetter: true,
       }),
-      gauge(today, resumeWait, {
+      gauge(periods, resumeWait, {
         key: "resume-wait", label: "再開待ち時間", desc: `手を離した (${RESUME_GAP_MINUTES}分以上空いた) タスクに戻るまでの中央値`, unit: "h", higherIsBetter: false,
       }),
-      gauge(today, closeRate, {
+      gauge(periods, closeRate, {
         key: "close-rate", label: "CLOSE 率", desc: "終えたタスクのうち捨てた割合", unit: "%", higherIsBetter: false,
       }),
     ],
@@ -141,31 +164,32 @@ export function taskSummary(tasks: Task[], today: string): Summary {
   };
 }
 
-export function draftSummary(entries: DraftEntry[], today: string): Summary {
-  // 公開日がわかるので、過去時点で下書きだったものを再現できる
+export function draftSummary(entries: DraftEntry[], asOf: string, range: TimeRange): Summary {
+  const periods = summaryPeriods(range, asOf, earliest(entries.map((e) => e.created)));
+  // 公開日がわかるので、過去の期間の終点で下書きだったものを再現できる
   const openAt = (ref: string) => entries.filter((e) => e.created <= ref && (e.published === null || e.published > ref));
-  const openCount = (ref: string) => openAt(ref).length;
-  const publishLeadTime = (ref: string) => {
+  const openCount = (p: Period) => openAt(p.finishedAt).length;
+  const publishLeadTime = (p: Period) => {
     const lts = entries
-      .filter((e) => e.published !== null && e.lead_time_days !== null && inWindow(e.published, ref, SUMMARY_WINDOW_DAYS))
+      .filter((e) => e.published !== null && e.lead_time_days !== null && inPeriod(e.published, p))
       .map((e) => e.lead_time_days!)
       .sort((a, b) => a - b);
     return lts.length > 0 ? percentile(lts, 50) : null;
   };
-  const oldestAge = (ref: string) => {
-    const ages = openAt(ref).map((e) => daysBetween(e.created, ref));
+  const oldestAge = (p: Period) => {
+    const ages = openAt(p.finishedAt).map((e) => daysBetween(e.created, p.finishedAt));
     return ages.length > 0 ? Math.max(...ages) : null;
   };
 
   return {
     gauges: [
-      gauge(today, openCount, {
+      gauge(periods, openCount, {
         key: "open-drafts", label: "未公開 Draft", desc: "現時点で draft タグが付いた記事", unit: "件", higherIsBetter: false,
       }),
-      gauge(today, publishLeadTime, {
+      gauge(periods, publishLeadTime, {
         key: "publish-lead-time", label: "公開リードタイム", desc: "公開した記事の中央値", unit: "日", higherIsBetter: false,
       }),
-      gauge(today, oldestAge, {
+      gauge(periods, oldestAge, {
         key: "oldest-draft", label: "最古 Draft", desc: "現時点で最も古い下書きの経過日数", unit: "日", higherIsBetter: false,
       }),
     ],
@@ -173,30 +197,31 @@ export function draftSummary(entries: DraftEntry[], today: string): Summary {
   };
 }
 
-export function activitySummary(daily: ActivityDailyEntry[], today: string): Summary {
-  const inRange = (ref: string) => daily.filter((d) => inWindow(d.date, ref, SUMMARY_WINDOW_DAYS) && d.activities.length > 0);
+export function activitySummary(daily: ActivityDailyEntry[], asOf: string, range: TimeRange): Summary {
+  const periods = summaryPeriods(range, asOf, earliest(daily.map((d) => d.date)));
+  const inRange = (p: Period) => daily.filter((d) => inPeriod(d.date, p) && d.activities.length > 0);
 
-  const hours = (ref: string) =>
-    inRange(ref).reduce((s, d) => s + d.activities.reduce((m, a) => m + a.minutes, 0), 0) / 60;
+  const hours = (p: Period) =>
+    inRange(p).reduce((s, d) => s + d.activities.reduce((m, a) => m + a.minutes, 0), 0) / 60;
   // 窓内に一度でも実施した Activity を対象とし、対象×日数のうち実施した割合
-  const doneRate = (ref: string) => {
-    const days = inRange(ref);
+  const doneRate = (p: Period) => {
+    const days = inRange(p);
     const targets = new Set(days.flatMap((d) => d.activities.map((a) => a.title)));
     if (targets.size === 0) return null;
     const done = days.reduce((s, d) => s + new Set(d.activities.map((a) => a.title)).size, 0);
-    return (done / (targets.size * SUMMARY_WINDOW_DAYS)) * 100;
+    return (done / (targets.size * (daysBetween(p.startedAt, p.finishedAt) + 1))) * 100;
   };
-  const activeDays = (ref: string) => inRange(ref).length;
+  const activeDays = (p: Period) => inRange(p).length;
 
   return {
     gauges: [
-      gauge(today, hours, {
+      gauge(periods, hours, {
         key: "hours", label: "投下時間", desc: "Activity の合計", unit: "h", higherIsBetter: true,
       }),
-      gauge(today, doneRate, {
+      gauge(periods, doneRate, {
         key: "done-rate", label: "習慣実施率", desc: "実施した Activity × 日数のうち実施した割合", unit: "%", higherIsBetter: true,
       }),
-      gauge(today, activeDays, {
+      gauge(periods, activeDays, {
         key: "active-days", label: "活動日数", desc: "Activity を1つ以上実施した日数", unit: "日", higherIsBetter: true,
       }),
     ],

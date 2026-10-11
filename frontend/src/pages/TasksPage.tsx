@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Box, Heading, Text, SimpleGrid } from "@chakra-ui/react";
 import { useWorkflowData } from "../hooks/useWorkflowData.ts";
 import { useTimeRange, rangeDates, unitForRange } from "../hooks/useTimeRange.ts";
-import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
+import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
 import { CHART_GROUPS } from "../chartConfig.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
@@ -11,7 +11,7 @@ import { taskSummary } from "../metrics.ts";
 
 export function TasksPage() {
   const { data, error } = useWorkflowData();
-  const { range, setRange } = useTimeRange();
+  const { range } = useTimeRange();
 
   const unit = unitForRange(range);
 
@@ -28,7 +28,7 @@ export function TasksPage() {
     return { tasks, dailyWork };
   }, [data, dates]);
 
-  const summary = useMemo(() => (data && asOf ? taskSummary(data.tasks, asOf) : null), [data, asOf]);
+  const summary = useMemo(() => (data && asOf ? taskSummary(data.tasks, asOf, range) : null), [data, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
@@ -43,7 +43,7 @@ export function TasksPage() {
         Generated: {formatGeneratedAt(data.generated_at)}
       </Text>
       <SummaryRow summary={summary} />
-      <TimeRangeSwitch range={range} onChange={setRange} startedAt={startedAt} finishedAt={finishedAt} />
+      <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
       {CHART_GROUPS.map((group) => (
         <Box key={group.key} mb={8}>
           <Heading size="md" color="gray.600" mb={3} pb={1} borderBottom="1px solid" borderColor="gray.200">
