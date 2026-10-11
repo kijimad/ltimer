@@ -55,6 +55,9 @@ CLOCK: [2025-01-12 Sun 09:00]--[2025-01-12 Sun 09:50]  (50min)`}</Pre>
             ["Wait Time Ratio", "1 - Flow Efficiency"],
             ["WIP", "ある期間において、開始済み (first_clock_in <= 期間) かつ未完了 (completedDate > 期間 or TODO) のタスク数"],
             ["Throughput", "ある期間に DONE になったタスク数"],
+            ["Queue Time", "セッション終了から同じタスクを再開するまでの間隔。60分未満は休憩とみなす"],
+            ["再開待ち時間", "60分以上の Queue Time の中央値。手を離したタスクに戻るまでの時間"],
+            ["Interruption", "同じ日にすでに触ったタスクへ、別タスクを挟んで戻ったセッション (A→B→A の2回目の A)"],
           ]}
         />
       </Section>

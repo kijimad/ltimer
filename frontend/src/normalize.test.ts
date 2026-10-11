@@ -39,6 +39,13 @@ describe("normalizeWorkflow", () => {
     expect(a.lead_time_days).toBe(1);
   });
 
+  it("keeps local clocks sorted by start", () => {
+    expect(a.clocks).toEqual([
+      { start: "2024-02-01 23:30", end: "2024-02-02 00:30", minutes: 60 },
+      { start: "2024-02-02 18:00", end: "2024-02-02 18:30", minutes: 30 },
+    ]);
+  });
+
   it("sums minutes and counts clocks", () => {
     expect(a.total_minutes).toBe(90);
     expect(a.clock_count).toBe(2);

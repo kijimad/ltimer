@@ -17,6 +17,10 @@ export function addMonths(date: string, n: number): string {
   return localDate(target);
 }
 
+export function minutesBetween(from: string, to: string): number {
+  return (new Date(to.replace(" ", "T")).getTime() - new Date(from.replace(" ", "T")).getTime()) / 60000;
+}
+
 export function daysBetween(from: string, to: string): number {
   return Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000);
 }

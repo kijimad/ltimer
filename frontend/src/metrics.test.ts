@@ -16,6 +16,7 @@ function task(overrides: Partial<Task>): Task {
     lead_time_days: 2,
     total_minutes: 60,
     clock_count: 1,
+    clocks: [],
     ...overrides,
   };
 }
@@ -87,6 +88,10 @@ describe("draftSummary", () => {
     expect(gauge(draftSummary(entries, TODAY), "publish-lead-time").value).toBe(19);
   });
 
+  it("returns null publish lead time when nothing was published in the window", () => {
+    expect(gauge(draftSummary([draft({ created: "2024-01-01" })], TODAY), "publish-lead-time").value).toBeNull();
+  });
+
   it("computes oldest open draft age", () => {
     expect(gauge(draftSummary(entries, TODAY), "oldest-draft").value).toBe(60);
   });
@@ -144,6 +149,25 @@ describe("scaleFrom", () => {
   it("keeps a non-zero range for flat history", () => {
     const s = scaleFrom([0, 0, 0])!;
     expect(s.max).toBeGreaterThan(s.min);
+  });
+});
+
+describe("taskSummary resume wait", () => {
+  it("takes the median of gaps of an hour or more resumed in the window", () => {
+    const s = taskSummary([
+      task({
+        clocks: [
+          { start: "2024-02-26 09:00", end: "2024-02-26 09:25", minutes: 25 },
+          // 5分は休憩なので除外
+          { start: "2024-02-26 09:30", end: "2024-02-26 09:55", minutes: 25 },
+          { start: "2024-02-26 11:55", end: "2024-02-26 12:20", minutes: 25 },
+          { start: "2024-02-26 16:20", end: "2024-02-26 16:45", minutes: 25 },
+          { start: "2024-02-27 16:45", end: "2024-02-27 17:10", minutes: 25 },
+        ],
+      }),
+    ], TODAY);
+    // 2h, 4h, 24h の中央値
+    expect(gauge(s, "resume-wait").value).toBe(4);
   });
 });
 

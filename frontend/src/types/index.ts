@@ -1,3 +1,9 @@
+export interface TaskClock {
+  start: string;
+  end: string;
+  minutes: number;
+}
+
 export interface Task {
   title: string;
   file: string;
@@ -8,6 +14,8 @@ export interface Task {
   lead_time_days: number;
   total_minutes: number;
   clock_count: number;
+  /** 開始時刻の昇順 */
+  clocks: TaskClock[];
 }
 
 export interface DailyWorkEntry {

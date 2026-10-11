@@ -1,6 +1,7 @@
 import type { Task, DraftEntry, ActivityDailyEntry } from "./types/index.ts";
 import { completedDate } from "./hooks/usePeriodKey.ts";
 import { addDays, daysBetween } from "./dates.ts";
+import { sessionGaps, RESUME_GAP_MINUTES } from "./spans.ts";
 
 /** 直近この日数以内に CLOCK した TODO をアクティブな仕掛かりとみなす */
 const ACTIVE_WIP_DAYS = 14;
@@ -96,6 +97,14 @@ export function taskSummary(tasks: Task[], today: string): Summary {
     const done = doneInWindow(tasks, ref, SUMMARY_WINDOW_DAYS);
     return done.length > 0 ? (done.filter((t) => t.lead_time_days <= SLO_DAYS).length / done.length) * 100 : null;
   };
+  const resumeGaps = tasks.flatMap(sessionGaps).filter((g) => g.minutes >= RESUME_GAP_MINUTES);
+  const resumeWait = (ref: string) => {
+    const hours = resumeGaps
+      .filter((g) => inWindow(g.resumedAt.slice(0, 10), ref, SUMMARY_WINDOW_DAYS))
+      .map((g) => g.minutes / 60)
+      .sort((a, b) => a - b);
+    return hours.length > 0 ? percentile(hours, 50) : null;
+  };
   const closeRate = (ref: string) => {
     const finished = finishedInWindow(tasks, ref, SUMMARY_WINDOW_DAYS);
     return finished.length > 0 ? (finished.filter((t) => t.status === "CLOSE").length / finished.length) * 100 : null;
@@ -117,6 +126,9 @@ export function taskSummary(tasks: Task[], today: string): Summary {
       }),
       gauge(today, flowEfficiency, {
         key: "flow-efficiency", label: "フロー効率", desc: "DONE の実作業時間÷リードタイム (中央値)", unit: "%", higherIsBetter: true,
+      }),
+      gauge(today, resumeWait, {
+        key: "resume-wait", label: "再開待ち時間", desc: `手を離した (${RESUME_GAP_MINUTES}分以上空いた) タスクに戻るまでの中央値`, unit: "h", higherIsBetter: false,
       }),
       gauge(today, closeRate, {
         key: "close-rate", label: "CLOSE 率", desc: "終えたタスクのうち捨てた割合", unit: "%", higherIsBetter: false,

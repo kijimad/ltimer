@@ -22,6 +22,8 @@ import { BottleneckChart } from "./components/charts/BottleneckChart.tsx";
 import { AlertList } from "./components/charts/AlertList.tsx";
 import { FileTable } from "./components/charts/FileTable.tsx";
 import { TaskTable } from "./components/charts/TaskTable.tsx";
+import { QueueTimeChart } from "./components/charts/QueueTimeChart.tsx";
+import { InterruptionChart } from "./components/charts/InterruptionChart.tsx";
 
 export interface ChartProps {
   tasks: Task[];
@@ -135,6 +137,12 @@ export const CHART_GROUPS: ChartGroup[] = [
         desc: "各タスクの待ち時間割合(1 - 実作業時間/リードタイム)。90%超は赤、70%超は橙。待ち時間が多いタスクほどフロー改善の余地がある",
         render: ({ tasks }) => <WaitTimeRatio tasks={tasks} />,
       },
+      {
+        key: "queue-time",
+        title: "Queue Time Distribution",
+        desc: "セッションが終わってから同じタスクを再開するまでの間隔の分布。1時間未満は休憩として灰色。長い間隔が多いほど手を離したタスクが滞留している",
+        render: ({ tasks, startedAt }) => <QueueTimeChart tasks={tasks} startedAt={startedAt} />,
+      },
     ],
   },
   {
@@ -144,14 +152,20 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "gantt",
         title: "Gantt Chart",
-        desc: "タスクごとの開始日〜終了日を横棒で表示。開始日順にソート。橙=TODO, 緑=DONE, 紫=CLOSE",
-        render: ({ tasks }) => <GanttChart tasks={tasks} />,
+        desc: "タスクごとのセッションを時間軸に並べる。濃い区間が作業していたセッション、薄い帯が着手〜最終作業の期間で、薄い帯だけの区間が待ち時間。開始日順。橙=TODO, 緑=DONE, 紫=CLOSE",
+        render: ({ tasks, startedAt, asOf }) => <GanttChart tasks={tasks} startedAt={startedAt} asOf={asOf} />,
       },
       {
         key: "daily-work",
         title: "Daily Work",
         desc: "日ごとにどのタスクに何分投入したかをスタック棒グラフで表示。作業配分のばらつきやマルチタスクの度合いを確認できる",
         render: ({ dailyWork }) => <DailyWork dailyWork={dailyWork} />,
+      },
+      {
+        key: "interruptions",
+        title: "Interruptions",
+        desc: "同じ日に別のタスクを挟んで元のタスクに戻った回数 (A→B→A の2回目の A を1回)。多いほど作業が分断されている",
+        render: ({ tasks, unit, startedAt }) => <InterruptionChart tasks={tasks} unit={unit} startedAt={startedAt} />,
       },
     ],
   },

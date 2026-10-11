@@ -5,7 +5,7 @@ import { Gauge } from "./Gauge.tsx";
 export function SummaryRow({ summary }: { summary: Summary }) {
   return (
     <Box mb={5}>
-      <SimpleGrid columns={{ base: 2, md: 3, xl: 6 }} gap={3}>
+      <SimpleGrid minChildWidth="170px" gap={3}>
         {summary.gauges.map((g) => (
           <Gauge key={g.key} metric={g} />
         ))}

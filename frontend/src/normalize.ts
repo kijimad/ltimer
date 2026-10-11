@@ -30,8 +30,11 @@ function sumByDate(items: { title: string; clocks: RawClock[] }[]): { date: stri
 export function normalizeWorkflow(raw: RawWorkflowData): WorkflowData {
   const tasks: Task[] = raw.tasks
     .map((t) => {
-      const firstClockIn = t.clocks.map((c) => localDateTime(c.start)).sort(byString)[0];
-      const lastClockOut = t.clocks.map((c) => localDateTime(c.end)).sort(byString).at(-1)!;
+      const clocks = t.clocks
+        .map((c) => ({ start: localDateTime(c.start), end: localDateTime(c.end), minutes: c.minutes }))
+        .sort((a, b) => byString(a.start, b.start));
+      const firstClockIn = clocks[0].start;
+      const lastClockOut = clocks.map((c) => c.end).sort(byString).at(-1)!;
       return {
         title: t.title,
         file: t.file,
@@ -42,6 +45,7 @@ export function normalizeWorkflow(raw: RawWorkflowData): WorkflowData {
         lead_time_days: daysBetween(firstClockIn.slice(0, 10), lastClockOut.slice(0, 10)),
         total_minutes: t.clocks.reduce((s, c) => s + c.minutes, 0),
         clock_count: t.clocks.length,
+        clocks,
       };
     })
     // LeadTimeBar などは並び順をそのまま使うので、リードタイムの降順にしておく

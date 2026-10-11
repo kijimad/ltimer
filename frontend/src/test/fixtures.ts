@@ -10,7 +10,11 @@ export const TASKS: Task[] = [
     closed_at: "2024-01-20 17:00",
     lead_time_days: 10,
     total_minutes: 300,
-    clock_count: 5,
+    clock_count: 2,
+    clocks: [
+      { start: "2024-01-10 09:00", end: "2024-01-10 10:00", minutes: 60 },
+      { start: "2024-01-20 13:00", end: "2024-01-20 17:00", minutes: 240 },
+    ],
   },
   {
     title: "Fix bug #42",
@@ -21,7 +25,11 @@ export const TASKS: Task[] = [
     closed_at: null,
     lead_time_days: 43,
     total_minutes: 120,
-    clock_count: 3,
+    clock_count: 2,
+    clocks: [
+      { start: "2024-02-01 10:00", end: "2024-02-01 11:00", minutes: 60 },
+      { start: "2024-03-15 11:00", end: "2024-03-15 12:00", minutes: 60 },
+    ],
   },
   {
     title: "Write docs",
@@ -33,6 +41,10 @@ export const TASKS: Task[] = [
     lead_time_days: 1,
     total_minutes: 60,
     clock_count: 2,
+    clocks: [
+      { start: "2024-01-15 08:00", end: "2024-01-15 08:30", minutes: 30 },
+      { start: "2024-01-16 09:30", end: "2024-01-16 10:00", minutes: 30 },
+    ],
   },
   {
     title: "Refactor DB",
@@ -44,6 +56,7 @@ export const TASKS: Task[] = [
     lead_time_days: 0,
     total_minutes: 180,
     clock_count: 1,
+    clocks: [{ start: "2024-01-05 09:00", end: "2024-01-05 12:00", minutes: 180 }],
   },
 ];
 
