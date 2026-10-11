@@ -159,7 +159,6 @@ export function taskSummary(tasks: Task[], asOf: string, range: TimeRange): Summ
     ],
     tiles: [
       { key: "active-wip", label: "アクティブ WIP", desc: `${ACTIVE_WIP_DAYS}日以内に CLOCK した TODO`, value: activeWip },
-      { key: "stale-todo", label: "放置 TODO", desc: `${ACTIVE_WIP_DAYS}日以上触っていない TODO`, value: todos.length - activeWip },
     ],
   };
 }

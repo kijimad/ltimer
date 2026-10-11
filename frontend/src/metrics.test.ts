@@ -65,13 +65,13 @@ describe("taskSummary", () => {
     expect(gauge(s, "flow-efficiency").value).toBe(10);
   });
 
-  it("splits TODO into active and stale", () => {
+  it("counts TODO touched within 14 days as active WIP", () => {
     const s = taskSummary([
-      task({ status: "TODO", closed_at: null, last_clock_out: "2024-02-20 10:00" }),
-      task({ status: "TODO", closed_at: null, last_clock_out: "2024-01-01 10:00" }),
+      // 03-01 から 13日前はアクティブ、14日前はアクティブでない
+      task({ status: "TODO", closed_at: null, last_clock_out: "2024-02-17 10:00" }),
+      task({ status: "TODO", closed_at: null, last_clock_out: "2024-02-16 10:00" }),
     ], TODAY, "1m");
     expect(tile(s, "active-wip").value).toBe(1);
-    expect(tile(s, "stale-todo").value).toBe(1);
   });
 });
 
