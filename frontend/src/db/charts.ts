@@ -264,6 +264,59 @@ export function interruptionsByPeriod(db: Database, startedAt: string, unit: Tim
   );
 }
 
+const FOCUS_BUCKETS: { label: string; maxMinutes: number }[] = [
+  { label: "<1h", maxMinutes: 60 },
+  { label: "1-2h", maxMinutes: 120 },
+  { label: "2-3h", maxMinutes: 180 },
+  { label: "3-4h", maxMinutes: 240 },
+  { label: "4h+", maxMinutes: Infinity },
+];
+
+export function focusBlockHistogram(db: Database, startedAt: string): { bucket: string; count: number }[] {
+  const finite = FOCUS_BUCKETS.slice(0, -1);
+  const bucket = `CASE ${finite.map((b, i) => `WHEN minutes < ${b.maxMinutes} THEN ${i}`).join(" ")} ELSE ${finite.length} END`;
+  const counts = new Map(
+    q<{ b: number; n: number }>(db, `SELECT ${bucket} AS b, count(*) AS n FROM focus_blocks WHERE substr(start, 1, 10) >= ?1 GROUP BY b`, [startedAt]).map((r) => [r.b, r.n]),
+  );
+  return FOCUS_BUCKETS.map((b, i) => ({ bucket: b.label, count: counts.get(i) ?? 0 }));
+}
+
+export function workByWeekdayHour(db: Database, startedAt: string): { weekday: number; hour: number; minutes: number }[] {
+  return q(
+    db,
+    `SELECT (CAST(strftime('%w', start) AS INTEGER) + 6) % 7 AS weekday, CAST(strftime('%H', start) AS INTEGER) AS hour, sum(minutes) AS minutes
+     FROM clocks_local WHERE substr(start, 1, 10) >= ?1 GROUP BY weekday, hour ORDER BY weekday, hour`,
+    [startedAt],
+  );
+}
+
+export const OTHER_PROJECTS = "その他";
+const TOP_PROJECTS = 7;
+
+export function workByProject(db: Database, startedAt: string, unit: TimeUnit): { data: Record<string, string | number>[]; projects: string[] } {
+  const cells = q<{ period: string; file: string; minutes: number }>(
+    db,
+    `SELECT ${period("c.start", unit)} AS period, t.file, sum(c.minutes) AS minutes
+     FROM clocks_local c JOIN tasks t ON t.id = c.task_id
+     WHERE substr(c.start, 1, 10) >= ?1 GROUP BY period, t.file ORDER BY period`,
+    [startedAt],
+  );
+  const totals = new Map<string, number>();
+  for (const c of cells) totals.set(c.file, (totals.get(c.file) ?? 0) + c.minutes);
+  const ranked = [...totals].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(([file]) => file);
+  const top = new Set(ranked.slice(0, TOP_PROJECTS));
+  const projects = [...ranked.slice(0, TOP_PROJECTS), ...(ranked.length > TOP_PROJECTS ? [OTHER_PROJECTS] : [])];
+
+  const byPeriod = new Map<string, Record<string, string | number>>();
+  for (const c of cells) {
+    const row = byPeriod.get(c.period) ?? { period: c.period };
+    const key = top.has(c.file) ? c.file : OTHER_PROJECTS;
+    row[key] = ((row[key] as number | undefined) ?? 0) + c.minutes;
+    byPeriod.set(c.period, row);
+  }
+  return { data: [...byPeriod.values()], projects };
+}
+
 // --- Activity ---
 
 /** 並びは初めて現れた順 (日付、同じ日はタイトル順) */

@@ -66,6 +66,20 @@ export interface Bucket {
   count: number;
 }
 
+export interface WeekdayHourMinutes {
+  /** 月曜を 0 とする */
+  weekday: number;
+  hour: number;
+  minutes: number;
+}
+
+export interface ProjectMix {
+  /** period と、プロジェクトの表示名ごとの作業時間 (分) */
+  data: Record<string, string | number>[];
+  /** 範囲内の作業時間が多い順。最後は「その他」になりうる */
+  projects: string[];
+}
+
 export interface Streak {
   title: string;
   current: number;
@@ -93,6 +107,10 @@ export interface TaskRepository {
   dailyWork(startedAt: string): DailyWorkEntry[];
   queueTimeHistogram(startedAt: string): Bucket[];
   interruptionsByPeriod(startedAt: string, unit: TimeUnit): PeriodCount[];
+  focusBlockHistogram(startedAt: string): Bucket[];
+  /** 各セッションの作業時間を開始した曜日・時間帯に数える */
+  workByWeekdayHour(startedAt: string): WeekdayHourMinutes[];
+  workByProject(startedAt: string, unit: TimeUnit): ProjectMix;
 }
 
 export interface ActivityRepository {

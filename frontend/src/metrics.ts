@@ -1,6 +1,7 @@
 import type { TimeRange } from "./types/index.ts";
 import { rangeDates } from "./hooks/useTimeRange.ts";
-import { addDays } from "./dates.ts";
+import { addDays, daysBetween } from "./dates.ts";
+import type { WeekdayHourMinutes } from "./data/repository.ts";
 
 export const HISTORY_PERIODS = 12;
 
@@ -81,4 +82,27 @@ export function bandOf(value: number, scale: Scale): Band {
   if (value < scale.lo || value <= scale.min) return "low";
   if (value > scale.hi || value >= scale.max) return "high";
   return "mid";
+}
+
+export const WEEKDAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"] as const;
+
+/** hour と、曜日のラベルごとの1日あたり平均作業時間 (分) */
+export type RhythmPoint = { hour: number } & Record<(typeof WEEKDAY_LABELS)[number], number>;
+
+/**
+ * 時間帯ごとの1日あたり平均作業時間 (分) を曜日ごとに出す。範囲内の曜日の日数が違うので、合計をその曜日の日数で割る。
+ * weekday は月曜を 0 とする
+ */
+export function dailyRhythm(cells: WeekdayHourMinutes[], startedAt: string, finishedAt: string): RhythmPoint[] {
+  const days = daysBetween(startedAt, finishedAt) + 1;
+  const firstWeekday = (new Date(`${startedAt}T00:00:00`).getDay() + 6) % 7;
+  const count = WEEKDAY_LABELS.map((_, w) => Array.from({ length: days }, (_, i) => (firstWeekday + i) % 7).filter((x) => x === w).length);
+  const minutes = new Map(cells.map((c) => [`${c.weekday}-${c.hour}`, c.minutes]));
+  return Array.from({ length: 24 }, (_, hour) => {
+    const point = { hour } as RhythmPoint;
+    WEEKDAY_LABELS.forEach((label, w) => {
+      point[label] = count[w] > 0 ? Math.round(((minutes.get(`${w}-${hour}`) ?? 0) / count[w]) * 10) / 10 : 0;
+    });
+    return point;
+  });
 }

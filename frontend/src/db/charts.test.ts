@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { interruptionsByPeriod, queueTimeHistogram, leadTimeHistogram, leadTimePercentiles, netProfitByPeriod } from "./charts.ts";
+import { interruptionsByPeriod, queueTimeHistogram, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod } from "./charts.ts";
 import { rows } from "./database.ts";
 import { createTestDatabase, fromTasks } from "../test/db.ts";
 import type { Task, TaskClock } from "../types/index.ts";
@@ -111,6 +111,54 @@ describe("empty ranges", () => {
 
   it("returns zero overall p85 without DONE tasks", () => {
     expect(leadTimePercentiles(empty, "2024-01-01", "week")).toEqual({ data: [], globalP85: 0 });
+  });
+});
+
+describe("focusBlockHistogram", () => {
+  it("buckets block lengths for blocks starting on or after startedAt", () => {
+    const long = task("a", [{ start: "2024-01-01 09:00", end: "2024-01-01 11:00", minutes: 120 }]);
+    const short = task("b", [{ start: "2024-01-02 09:00", end: "2024-01-02 09:30", minutes: 30 }]);
+    const before = task("c", [{ start: "2023-12-31 09:00", end: "2023-12-31 09:30", minutes: 30 }]);
+    expect(focusBlockHistogram(db([long, short, before]), "2024-01-01")).toEqual([
+      { bucket: "<1h", count: 1 },
+      { bucket: "1-2h", count: 0 },
+      { bucket: "2-3h", count: 1 },
+      { bucket: "3-4h", count: 0 },
+      { bucket: "4h+", count: 0 },
+    ]);
+  });
+});
+
+describe("workByWeekdayHour", () => {
+  it("counts minutes at the local weekday and hour of the session start", () => {
+    // 2024-01-01 は月曜。JST 08:30 は UTC では前日 (日曜) の 23:30
+    const t = task("a", [{ start: "2024-01-01 08:30", end: "2024-01-01 09:00", minutes: 30 }, { start: "2024-01-07 22:00", end: "2024-01-07 22:25", minutes: 25 }]);
+    expect(workByWeekdayHour(db([t]), "2024-01-01")).toEqual([
+      { weekday: 0, hour: 8, minutes: 30 },
+      { weekday: 6, hour: 22, minutes: 25 },
+    ]);
+  });
+});
+
+describe("workByProject", () => {
+  const inFile = (file: string, minutes: number) => ({
+    ...task(file, [{ start: "2024-01-02 09:00", end: "2024-01-02 09:25", minutes }]),
+    file,
+  });
+
+  it("keeps the top 7 files as series and merges the rest into others", () => {
+    const tasks = Array.from({ length: 9 }, (_, i) => inFile(`f${i}.org`, (i + 1) * 10));
+    const { data, projects } = workByProject(db(tasks), "2024-01-01", "week");
+    expect(projects).toEqual(["f8.org", "f7.org", "f6.org", "f5.org", "f4.org", "f3.org", "f2.org", OTHER_PROJECTS]);
+    expect(data).toEqual([{ period: "2024-01-01", "f8.org": 90, "f7.org": 80, "f6.org": 70, "f5.org": 60, "f4.org": 50, "f3.org": 40, "f2.org": 30, [OTHER_PROJECTS]: 30 }]);
+  });
+
+  it("orders files with the same total by name", () => {
+    expect(workByProject(db([inFile("b.org", 10), inFile("a.org", 10)]), "2024-01-01", "week").projects).toEqual(["a.org", "b.org"]);
+  });
+
+  it("does not add others when there are 7 files or fewer", () => {
+    expect(workByProject(db([inFile("a.org", 10)]), "2024-01-01", "month").projects).toEqual(["a.org"]);
   });
 });
 

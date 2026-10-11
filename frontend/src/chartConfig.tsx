@@ -24,6 +24,9 @@ import { AlertList } from "./components/charts/AlertList.tsx";
 import { FileTable } from "./components/charts/FileTable.tsx";
 import { TaskTable } from "./components/charts/TaskTable.tsx";
 import { QueueTimeChart } from "./components/charts/QueueTimeChart.tsx";
+import { FocusBlockChart } from "./components/charts/FocusBlockChart.tsx";
+import { TimeOfDayChart } from "./components/charts/TimeOfDayChart.tsx";
+import { ProjectMixChart } from "./components/charts/ProjectMixChart.tsx";
 import { InterruptionChart } from "./components/charts/InterruptionChart.tsx";
 
 export interface ChartProps {
@@ -145,6 +148,12 @@ export const CHART_GROUPS: ChartGroup[] = [
         desc: "セッションが終わってから同じタスクを再開するまでの間隔の分布。1時間未満は休憩として灰色。長い間隔が多いほど手を離したタスクが滞留している",
         render: ({ repo, startedAt }) => <QueueTimeChart repo={repo} startedAt={startedAt} />,
       },
+      {
+        key: "focus-blocks",
+        title: "Focus Blocks",
+        desc: "同じタスクを60分未満の間隔で続けたまとまり (集中ブロック) の長さの分布。長いブロックが多いほどまとまった作業ができている",
+        render: ({ repo, startedAt }) => <FocusBlockChart repo={repo} startedAt={startedAt} />,
+      },
     ],
   },
   {
@@ -162,6 +171,18 @@ export const CHART_GROUPS: ChartGroup[] = [
         title: "Daily Work",
         desc: "日ごとにどのタスクに何分投入したかをスタック棒グラフで表示。作業配分のばらつきやマルチタスクの度合いを確認できる",
         render: ({ repo, startedAt }) => <DailyWork repo={repo} startedAt={startedAt} />,
+      },
+      {
+        key: "time-of-day",
+        title: "Time of Day",
+        desc: "時間帯ごとの1日あたり平均作業時間を曜日ごとに比べる。各セッションを開始した時間帯に数え、合計を範囲内のその曜日の日数で割る",
+        render: ({ repo, startedAt, asOf }) => <TimeOfDayChart repo={repo} startedAt={startedAt} asOf={asOf} />,
+      },
+      {
+        key: "project-mix",
+        title: "Project Mix",
+        desc: "期間ごとの、ファイル (プロジェクト) 別の作業時間。範囲内で作業時間の多い上位7件と、残りを「その他」にまとめて積み上げる",
+        render: ({ repo, startedAt, unit }) => <ProjectMixChart repo={repo} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "interruptions",

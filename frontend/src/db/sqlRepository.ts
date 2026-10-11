@@ -24,6 +24,9 @@ export function createSqlRepository(db: Database): Repository {
       dailyWork: (s) => c.dailyWorkInRange(db, s),
       queueTimeHistogram: (s) => c.queueTimeHistogram(db, s),
       interruptionsByPeriod: (s, u) => c.interruptionsByPeriod(db, s, u),
+      focusBlockHistogram: (s) => c.focusBlockHistogram(db, s),
+      workByWeekdayHour: (s) => c.workByWeekdayHour(db, s),
+      workByProject: (s, u) => c.workByProject(db, s, u),
     },
     activities: {
       summary: (asOf, range) => activitySummary(db, asOf, range),

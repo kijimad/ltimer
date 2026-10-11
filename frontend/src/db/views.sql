@@ -43,7 +43,28 @@ FROM (
 )
 WHERE prev_end IS NOT NULL;
 
+-- 同じタスクのセッションを、間隔が 60 分 (summary.ts の RESUME_GAP_MINUTES) 未満ならつなげた集中ブロック。
+-- 間隔も作業時間も、重なりを二重に数えないよう、それまでで最も遅い終了から測る
+CREATE TEMP TABLE focus_blocks AS
+SELECT task_id, min(start) AS start, max(end) AS end, sum(minutes) AS minutes, count(*) AS sessions
+FROM (
+  SELECT task_id, start, end, minutes,
+    sum(brk) OVER (PARTITION BY task_id ORDER BY start, seq) AS block
+  FROM (
+    SELECT task_id, start, end, seq,
+      CASE WHEN prev_end IS NULL OR prev_end <= start THEN minutes
+        ELSE max(0, round((julianday(end) - julianday(prev_end)) * 1440)) END AS minutes,
+      CASE WHEN prev_end IS NULL OR round((julianday(start) - julianday(prev_end)) * 1440) >= 60 THEN 1 ELSE 0 END AS brk
+    FROM (
+      SELECT *, max(end) OVER (PARTITION BY task_id ORDER BY start, seq ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_end
+      FROM clocks_local
+    )
+  )
+)
+GROUP BY task_id, block;
+
 CREATE INDEX temp.clocks_local_task ON clocks_local (task_id, start);
 CREATE INDEX temp.tasks_local_completed ON tasks_local (completed_date);
 CREATE INDEX temp.session_gaps_resumed ON session_gaps (resumed_at);
 CREATE INDEX temp.activity_daily_date ON activity_daily (date);
+CREATE INDEX temp.focus_blocks_start ON focus_blocks (start);

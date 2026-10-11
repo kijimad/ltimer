@@ -11,6 +11,7 @@ const ACTIVE_WIP_DAYS = 14;
 /** SLO: リードタイム SLO_DAYS 日以内の割合を SLO_TARGET% 以上に保つ */
 const SLO_DAYS = 3;
 const SLO_TARGET = 90;
+const DEEP_FOCUS_MINUTES = 120;
 
 /** 1行1列の結果を返す SQL を期間ごとに評価する */
 function scalar(db: Database, sql: string, params: SqlValue[]): number | null {
@@ -92,6 +93,9 @@ export function taskSummary(db: Database, asOf: string, range: TimeRange): Summa
           key: "resume-wait", label: "再開待ち時間", desc: `手を離した (${RESUME_GAP_MINUTES}分以上空いた) タスクに戻るまでの中央値`, unit: "h", higherIsBetter: false,
         },
       ),
+      g(`SELECT count(*) AS v FROM focus_blocks WHERE minutes >= ${DEEP_FOCUS_MINUTES} AND substr(start, 1, 10) BETWEEN ?1 AND ?2`, {
+        key: "deep-focus", label: "集中ブロック (2h+)", desc: "60分未満の間隔でつなげた作業が2時間以上続いた回数", unit: "回", higherIsBetter: true,
+      }),
       g(`SELECT 100.0 * sum(status = 'CLOSE') / count(*) AS v FROM tasks_local WHERE completed_date BETWEEN ?1 AND ?2`, {
         key: "close-rate", label: "CLOSE 率", desc: "終えたタスクのうち捨てた割合", unit: "%", higherIsBetter: false,
       }),

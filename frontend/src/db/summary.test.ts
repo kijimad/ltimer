@@ -188,6 +188,20 @@ describe("taskSummary resume wait", () => {
   });
 });
 
+describe("taskSummary deep focus", () => {
+  it("counts focus blocks of two hours or more started in the range", () => {
+    const s = taskSummary([
+      task({ clocks: [
+        { start: "2024-02-20 09:00", end: "2024-02-20 10:00", minutes: 60 },
+        // 30分後の再開なので同じブロック。合計 120分
+        { start: "2024-02-20 10:30", end: "2024-02-20 11:30", minutes: 60 },
+      ] }),
+      task({ clocks: [{ start: "2024-02-21 09:00", end: "2024-02-21 10:59", minutes: 119 }] }),
+    ], TODAY, "1m");
+    expect(gauge(s, "deep-focus").value).toBe(1);
+  });
+});
+
 describe("taskSummary SLO / CLOSE rate", () => {
   const tasks = [
     ...Array.from({ length: 9 }, () => task({ lead_time_days: 1 })),

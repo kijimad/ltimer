@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { summaryPeriods, scaleFrom, bandOf } from "./metrics.ts";
+import { summaryPeriods, scaleFrom, bandOf, dailyRhythm } from "./metrics.ts";
 
 describe("summaryPeriods", () => {
   it("starts with the selected range and continues with contiguous past periods", () => {
@@ -48,5 +48,29 @@ describe("scaleFrom", () => {
   it("keeps a non-zero range for flat history", () => {
     const s = scaleFrom([0, 0, 0])!;
     expect(s.max).toBeGreaterThan(s.min);
+  });
+});
+
+describe("dailyRhythm", () => {
+  // 2024-01-01 (月) 〜 01-10 (水) は月・火・水が 2日、木〜日が 1日
+  const cells = [
+    { weekday: 0, hour: 22, minutes: 100 },
+    { weekday: 3, hour: 22, minutes: 30 },
+    { weekday: 6, hour: 10, minutes: 40 },
+  ];
+  const rhythm = dailyRhythm(cells, "2024-01-01", "2024-01-10");
+
+  it("returns 24 hours", () => {
+    expect(rhythm.map((r) => r.hour)).toEqual(Array.from({ length: 24 }, (_, h) => h));
+  });
+
+  it("averages each weekday over its own number of days", () => {
+    expect(rhythm[22]).toMatchObject({ 月: 50, 木: 30, 日: 0 });
+    expect(rhythm[10]).toMatchObject({ 月: 0, 日: 40 });
+  });
+
+  it("returns zero for weekdays absent from the range", () => {
+    // 01-01 (月) 〜 01-02 (火) には日曜がない
+    expect(dailyRhythm([{ weekday: 6, hour: 1, minutes: 10 }], "2024-01-01", "2024-01-02")[1].日).toBe(0);
   });
 });
