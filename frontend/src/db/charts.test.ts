@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod } from "./charts.ts";
+import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod, wipByPeriod, cumulativeFlow, burnByDate, cashFlowByPeriod, activityByPeriod } from "./charts.ts";
 import { rows } from "./database.ts";
-import { createTestDatabase, fromTasks } from "../test/db.ts";
+import { createTestDatabase, fromTasks, fromDaily } from "../test/db.ts";
 import type { Task, TaskClock } from "../types/index.ts";
 
 function task(title: string, clocks: TaskClock[]): Task {
@@ -73,11 +73,16 @@ describe("interruptionsByPeriod", () => {
       c("2024-01-08 09:00", "2024-01-08 09:25"), c("2024-01-08 11:00", "2024-01-08 11:25"),
     ]);
     const b = task("B", [c("2024-01-01 10:00", "2024-01-01 10:25"), c("2024-01-08 10:00", "2024-01-08 10:25")]);
-    expect(interruptionsByPeriod(db([a, b]), "2024-01-01", "week")).toEqual([
+    expect(interruptionsByPeriod(db([a, b]), "2024-01-01", "week").slice(0, 3)).toEqual([
       { period: "2024-01-01", count: 1 },
       { period: "2024-01-08", count: 1 },
+      { period: "2024-01-15", count: 0 },
     ]);
-    expect(interruptionsByPeriod(db([a, b]), "2024-01-02", "week")).toEqual([{ period: "2024-01-08", count: 1 }]);
+    // 01-01 の週は 01-02 以降の日だけを数える
+    expect(interruptionsByPeriod(db([a, b]), "2024-01-02", "week").slice(0, 2)).toEqual([
+      { period: "2024-01-01", count: 0 },
+      { period: "2024-01-08", count: 1 },
+    ]);
   });
 });
 
@@ -109,8 +114,12 @@ describe("empty ranges", () => {
     expect(leadTimeHistogram(empty, "2024-01-01", "week")).toEqual({ data: [], bins: [] });
   });
 
-  it("returns zero overall p85 without DONE tasks", () => {
-    expect(leadTimePercentiles(empty, "2024-01-01", "week")).toEqual({ data: [], globalP85: 0 });
+  it("returns null points and zero overall p85 without DONE tasks", () => {
+    // 暦はデータがなくても生成日の1日を持つので、その週の点は値なし
+    expect(leadTimePercentiles(empty, "2024-01-01", "2024-03-01", "week")).toEqual({
+      data: [{ period: "2024-02-26", p50: null, p85: null, p95: null }],
+      globalP85: 0,
+    });
   });
 });
 
@@ -150,7 +159,9 @@ describe("workByProject", () => {
     const tasks = Array.from({ length: 9 }, (_, i) => inFile(`f${i}.org`, (i + 1) * 10));
     const { data, projects } = workByProject(db(tasks), "2024-01-01", "week");
     expect(projects).toEqual(["f8.org", "f7.org", "f6.org", "f5.org", "f4.org", "f3.org", "f2.org", OTHER_PROJECTS]);
-    expect(data).toEqual([{ period: "2024-01-01", "f8.org": 90, "f7.org": 80, "f6.org": 70, "f5.org": 60, "f4.org": 50, "f3.org": 40, "f2.org": 30, [OTHER_PROJECTS]: 30 }]);
+    expect(data[0]).toEqual({ period: "2024-01-01", "f8.org": 90, "f7.org": 80, "f6.org": 70, "f5.org": 60, "f4.org": 50, "f3.org": 40, "f2.org": 30, [OTHER_PROJECTS]: 30 });
+    // 作業のない週も全系列 0 で並ぶ
+    expect(data[1]).toEqual({ period: "2024-01-08", ...Object.fromEntries(projects.map((p) => [p, 0])) });
   });
 
   it("orders files with the same total by name", () => {
@@ -188,3 +199,67 @@ describe("throughputByPeriod", () => {
   });
 });
 
+
+describe("wipByPeriod", () => {
+  it("counts unfinished tasks clocked within 14 days of each period end", () => {
+    const stale = { ...task("stale", [c("2023-12-01 09:00", "2023-12-01 09:25")]), status: "TODO" as const };
+    const active = { ...task("active", [c("2024-01-03 09:00", "2024-01-03 09:25")]), status: "TODO" as const };
+    const done = { ...task("done", [c("2024-01-02 09:00", "2024-01-02 09:25")]), closed_at: "2024-01-10 10:00" };
+    expect(wipByPeriod(db([stale, active, done]), "2024-01-01", "week").slice(0, 3)).toEqual([
+      { period: "2024-01-01", wip: 2, throughput: 0, avgLead: null },
+      { period: "2024-01-08", wip: 1, throughput: 1, avgLead: 0 },
+      // 01-03 の CLOCK は 01-21 から見て14日より前
+      { period: "2024-01-15", wip: 0, throughput: 0, avgLead: null },
+    ]);
+  });
+});
+
+describe("cumulative flow", () => {
+  // 範囲の前に着手して範囲内に終えたタスクと、範囲内に着手したタスク
+  const tasks = [
+    { ...task("carried", [c("2023-12-20 09:00", "2023-12-20 09:25")]), closed_at: "2024-01-02 10:00" },
+    { ...task("new", [c("2024-01-09 09:00", "2024-01-09 09:25")]), status: "TODO" as const },
+    { ...task("dropped", [c("2024-01-10 09:00", "2024-01-10 09:25")]), status: "CLOSE" as const, closed_at: "2024-01-11 10:00" },
+  ];
+
+  it("accumulates starts and completions from startedAt", () => {
+    expect(cumulativeFlow(db(tasks), "2024-01-01", "week").slice(0, 3)).toEqual([
+      { period: "2024-01-01", Started: 0, Completed: 1, Closed: 0 },
+      { period: "2024-01-08", Started: 2, Completed: 2, Closed: 1 },
+      { period: "2024-01-15", Started: 2, Completed: 2, Closed: 1 },
+    ]);
+    expect(cashFlowByPeriod(db(tasks), "2024-01-01", "week").slice(0, 2)).toEqual([
+      { period: "2024-01-01", CashFlow: 1 },
+      { period: "2024-01-08", CashFlow: 0 },
+    ]);
+  });
+
+  it("pairs daily totals with the active WIP of each day", () => {
+    expect(burnByDate(db(tasks), "2024-01-08").slice(0, 2)).toEqual([
+      { date: "2024-01-08", Started: 0, Completed: 0, WIP: 0 },
+      { date: "2024-01-09", Started: 1, Completed: 0, WIP: 1 },
+    ]);
+  });
+});
+
+describe("zero-filled periods", () => {
+  it("fills every histogram bin with zero in weeks without DONE", () => {
+    const done = (d: string) => ({ ...task(d, [c(`${d} 09:00`, `${d} 09:25`)]), closed_at: `${d} 10:00` });
+    const { data, bins } = leadTimeHistogram(db([done("2024-01-01"), done("2024-01-15")]), "2024-01-01", "week");
+    expect(data[1]).toEqual({ period: "2024-01-08", ...Object.fromEntries(bins.map((b) => [b, 0])) });
+  });
+
+  it("fills zero minutes for activities done in range", () => {
+    const daily = [
+      { date: "2023-12-01", activities: [{ title: "old", minutes: 10 }] },
+      { date: "2024-01-01", activities: [{ title: "read", minutes: 30 }] },
+      { date: "2024-01-15", activities: [{ title: "read", minutes: 20 }] },
+    ];
+    const a = createTestDatabase({ generatedAt: "2024-03-01T03:00:00Z", activities: fromDaily(daily) });
+    expect(activityByPeriod(a, "2024-01-01", "week").slice(0, 3)).toEqual([
+      { period: "2024-01-01", title: "read", minutes: 30 },
+      { period: "2024-01-08", title: "read", minutes: 0 },
+      { period: "2024-01-15", title: "read", minutes: 20 },
+    ]);
+  });
+});

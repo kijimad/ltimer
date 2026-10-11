@@ -1,13 +1,8 @@
 import type { Database, SqlValue } from "sql.js";
 import type { Task, TaskClock, TimeUnit, DailyWorkEntry, DraftEntry } from "../types/index.ts";
 import { rows } from "./database.ts";
-import { RESUME_GAP_MINUTES } from "./summary.ts";
+import { RESUME_GAP_MINUTES, TASK_METRICS, FLOW_METRICS, leadTimePercentile, series, evaluate, calendarPeriods } from "./metricDefs.ts";
 import type { FileSummaryRow, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
-
-/** 週は ISO の月曜、月は YYYY-MM。日付 (YYYY-MM-DD) にも日時 (YYYY-MM-DD HH:MM) にも使える */
-function period(expr: string, unit: TimeUnit): string {
-  return unit === "month" ? `substr(${expr}, 1, 7)` : `date(${expr}, '-6 days', 'weekday 1')`;
-}
 
 /** Tasks ページの対象: 範囲内 (?1 以降) に触ったタスク。並びは表示の基準 (リードタイムの降順) */
 const FT = `ft AS (
@@ -73,124 +68,69 @@ const calendarPeriod = (unit: TimeUnit) => (unit === "month" ? "c.month" : "c.we
 
 /** 範囲内に完了した DONE の数。完了のない期間も 0 で返す */
 export function throughputByPeriod(db: Database, startedAt: string, unit: TimeUnit): { period: string; count: number }[] {
-  return q(
-    db,
-    `SELECT ${calendarPeriod(unit)} AS period, sum(f.done) AS count
-     FROM daily_task_facts f JOIN calendar c USING (date) WHERE f.date >= ?1 GROUP BY period ORDER BY period`,
-    [startedAt],
-  );
+  const periods = calendarPeriods(db, startedAt, unit);
+  return series(db, TASK_METRICS.throughput, periods).map((v, i) => ({ period: periods[i].period, count: v ?? 0 }));
 }
 
-export function leadTimePercentiles(db: Database, startedAt: string, unit: TimeUnit): LeadTimePercentiles {
-  const data = q<{ period: string; p50: number; p85: number; p95: number }>(
-    db,
-    `WITH ${FT}
-     SELECT ${period("completed_date", unit)} AS period,
-       percentile(lead_time_days, 50) AS p50, percentile(lead_time_days, 85) AS p85, percentile(lead_time_days, 95) AS p95
-     FROM ft WHERE status = 'DONE' AND completed_date IS NOT NULL GROUP BY period ORDER BY period`,
-    [startedAt],
-  );
-  const [overall] = q<{ p85: number | null }>(
-    db,
-    `WITH ${FT} SELECT percentile(lead_time_days, 85) AS p85 FROM ft WHERE status = 'DONE'`,
-    [startedAt],
-  );
-  return { data, globalP85: overall.p85 ?? 0 };
+/** DONE のない期間は値を null にして、線を途切れさせる */
+export function leadTimePercentiles(db: Database, startedAt: string, asOf: string, unit: TimeUnit): LeadTimePercentiles {
+  const periods = calendarPeriods(db, startedAt, unit);
+  const [p50, p85, p95] = [50, 85, 95].map((p) => series(db, leadTimePercentile(p), periods));
+  return {
+    data: periods.map(({ period }, i) => ({ period, p50: p50[i], p85: p85[i], p95: p95[i] })),
+    globalP85: evaluate(db, leadTimePercentile(85), { startedAt, finishedAt: asOf }) ?? 0,
+  };
 }
 
-/** ビンの幅は全体の最大値を6分割した値。期間ごとに、出現したビンすべての件数を並べる */
+/** ビンの幅は全体の最大値を6分割した値。範囲内の暦の期間すべてに、出現したビンすべての件数を並べる */
 export function leadTimeHistogram(db: Database, startedAt: string, unit: TimeUnit): LeadTimeHistogram {
-  const DONE = `WITH ${FT} SELECT ${period("completed_date", unit)} AS period, lead_time_days AS v FROM ft WHERE status = 'DONE' AND completed_date IS NOT NULL`;
-  const [{ max }] = q<{ max: number | null }>(db, `SELECT max(v) AS max FROM (${DONE})`, [startedAt]);
-  if (max === null) return { data: [], bins: [] as string[] };
-  const binSize = Math.max(1, Math.ceil(max / 6));
-  const counts = q<{ period: string; bin: number; n: number }>(
+  const done = q<{ period: string; v: number }>(
     db,
-    `SELECT period, (v / ?2) * ?2 AS bin, count(*) AS n FROM (${DONE}) GROUP BY period, bin ORDER BY period, bin`,
-    [startedAt, binSize],
+    `SELECT ${calendarPeriod(unit)} AS period, t.lead_time_days AS v
+     FROM tasks_local t JOIN calendar c ON c.date = t.completed_date WHERE t.status = 'DONE' AND t.completed_date >= ?1`,
+    [startedAt],
   );
-  const sortedBins = [...new Set(counts.map((c) => c.bin))].sort((a, b) => a - b);
+  if (done.length === 0) return { data: [], bins: [] };
+  const binSize = Math.max(1, Math.ceil(Math.max(...done.map((d) => d.v)) / 6));
+  const bin = (v: number) => Math.floor(v / binSize) * binSize;
+  const bins = [...new Set(done.map((d) => bin(d.v)))].sort((a, b) => a - b);
   const label = (b: number) => `${b}–${b + binSize}d`;
-  const periods = [...new Set(counts.map((c) => c.period))];
-  const data = periods.map((p) => {
-    const row: Record<string, string | number> = { period: p };
-    for (const b of sortedBins) row[label(b)] = counts.find((c) => c.period === p && c.bin === b)?.n ?? 0;
+  const data = calendarPeriods(db, startedAt, unit).map(({ period }) => {
+    const row: Record<string, string | number> = { period };
+    for (const b of bins) row[label(b)] = done.filter((d) => d.period === period && bin(d.v) === b).length;
     return row;
   });
-  return { data, bins: sortedBins.map(label) };
+  return { data, bins: bins.map(label) };
 }
 
-/**
- * 各期間の WIP (開始済みで未完了) と完了数・平均リードタイム。
- * 期間は対象タスクの開始と完了の期間の和集合で、?1 の期間以降だけを返す
- */
+/** 各期間の終わりの WIP と、期間内の完了数・平均リードタイム */
 export function wipByPeriod(db: Database, startedAt: string, unit: TimeUnit): WipPoint[] {
-  return q<WipPoint>(
-    db,
-    `WITH ${FT},
-     r AS (
-       SELECT ${period("first_clock_in", unit)} AS s,
-         CASE WHEN completed_date IS NULL THEN '9999' ELSE ${period("completed_date", unit)} END AS e,
-         status, completed_date, lead_time_days
-       FROM ft
-     ),
-     ps AS (SELECT s AS p FROM r UNION SELECT e FROM r WHERE e <> '9999')
-     SELECT p AS period,
-       (SELECT count(*) FROM r WHERE s <= p AND p < e) AS wip,
-       (SELECT count(*) FROM r WHERE status = 'DONE' AND completed_date IS NOT NULL AND e = p) AS throughput,
-       (SELECT avg(lead_time_days) FROM r WHERE status = 'DONE' AND completed_date IS NOT NULL AND e = p) AS avgLead
-     FROM ps WHERE p >= ${period("?1", unit)} ORDER BY p`,
-    [startedAt],
-  );
+  const periods = calendarPeriods(db, startedAt, unit);
+  const [wip, throughput, avgLead] = [FLOW_METRICS.wip, TASK_METRICS.throughput, FLOW_METRICS.avgLeadTime].map((def) => series(db, def, periods));
+  return periods.map(({ period }, i) => ({ period, wip: wip[i] ?? 0, throughput: throughput[i] ?? 0, avgLead: avgLead[i] }));
 }
 
-/** 期間ごとの開始・完了・CLOSE の累積。累積は対象タスクの全期間から数え、?1 の期間以降だけを返す */
-export function cumulativeFlow(db: Database, startedAt: string, unit: TimeUnit): FlowPoint[] {
-  return q<FlowPoint>(
-    db,
-    `WITH ${FT},
-     ev AS (
-       SELECT ${period("first_clock_in", unit)} AS p, 1 AS st, 0 AS co, 0 AS cl FROM ft
-       UNION ALL
-       SELECT ${period("completed_date", unit)}, 0, 1, status = 'CLOSE' FROM ft WHERE completed_date IS NOT NULL
-     ),
-     cum AS (
-       SELECT p, sum(sum(st)) OVER w AS Started, sum(sum(co)) OVER w AS Completed, sum(sum(cl)) OVER w AS Closed
-       FROM ev GROUP BY p WINDOW w AS (ORDER BY p)
-     )
-     SELECT p AS period, Started, Completed, Closed FROM cum WHERE p >= ${period("?1", unit)} ORDER BY p`,
-    [startedAt],
-  );
+/** 開始・完了・CLOSE を範囲の始まりから累積する */
+export function cumulativeFlow(db: Database, startedAt: string, unit: TimeUnit | "day"): FlowPoint[] {
+  const periods = calendarPeriods(db, startedAt, unit);
+  const [started, completed, closed] = [FLOW_METRICS.started, FLOW_METRICS.completed, FLOW_METRICS.closed].map((def) => cumsum(series(db, def, periods)));
+  return periods.map(({ period }, i) => ({ period, Started: started[i], Completed: completed[i], Closed: closed[i] }));
+}
+
+function cumsum(values: (number | null)[]): number[] {
+  let total = 0;
+  return values.map((v) => (total += v ?? 0));
 }
 
 export function burnByDate(db: Database, startedAt: string): BurnPoint[] {
-  return q<BurnPoint>(
-    db,
-    `WITH ${FT},
-     ev AS (
-       SELECT substr(first_clock_in, 1, 10) AS d, 1 AS st, 0 AS co FROM ft
-       UNION ALL
-       SELECT completed_date, 0, 1 FROM ft WHERE completed_date IS NOT NULL
-     ),
-     cum AS (SELECT d, sum(sum(st)) OVER w AS Started, sum(sum(co)) OVER w AS Completed FROM ev GROUP BY d WINDOW w AS (ORDER BY d))
-     SELECT d AS date, Started, Completed, Started - Completed AS WIP FROM cum WHERE d >= ?1 ORDER BY d`,
-    [startedAt],
-  );
+  const flow = cumulativeFlow(db, startedAt, "day");
+  const wip = series(db, FLOW_METRICS.wip, calendarPeriods(db, startedAt, "day"));
+  return flow.map(({ period, Started, Completed }, i) => ({ date: period, Started, Completed, WIP: wip[i] ?? 0 }));
 }
 
+/** 完了を +1、開始を -1 として範囲の始まりから累積する */
 export function cashFlowByPeriod(db: Database, startedAt: string, unit: TimeUnit): CashFlowPoint[] {
-  return q<CashFlowPoint>(
-    db,
-    `WITH ${FT},
-     ev AS (
-       SELECT ${period("first_clock_in", unit)} AS p, -1 AS net FROM ft
-       UNION ALL
-       SELECT ${period("completed_date", unit)}, 1 FROM ft WHERE completed_date IS NOT NULL
-     ),
-     cum AS (SELECT p, sum(sum(net)) OVER (ORDER BY p) AS CashFlow FROM ev GROUP BY p)
-     SELECT p AS period, CashFlow FROM cum WHERE p >= ${period("?1", unit)} ORDER BY p`,
-    [startedAt],
-  );
+  return cumulativeFlow(db, startedAt, unit).map(({ period, Started, Completed }) => ({ period, CashFlow: Completed - Started }));
 }
 
 /** 完了数 (T) と、日ごとに時間へ丸めた作業時間の期間合計 (OE)。何もない期間も 0 で返す */
@@ -263,7 +203,8 @@ export function interruptionsByPeriod(db: Database, startedAt: string, unit: Tim
          AND EXISTS (SELECT 1 FROM s e WHERE e.d = s.d AND e.task_id = s.task_id AND e.i < s.i - 1)) AS n
        FROM s GROUP BY d
      )
-     SELECT ${period("d", unit)} AS period, sum(n) AS count FROM daily WHERE d >= ?1 GROUP BY period ORDER BY period`,
+     SELECT ${calendarPeriod(unit)} AS period, coalesce(sum(n), 0) AS count
+     FROM calendar c LEFT JOIN daily ON daily.d = c.date WHERE c.date >= ?1 GROUP BY period ORDER BY period`,
     [startedAt],
   );
 }
@@ -300,9 +241,9 @@ const TOP_PROJECTS = 7;
 export function workByProject(db: Database, startedAt: string, unit: TimeUnit): { data: Record<string, string | number>[]; projects: string[] } {
   const cells = q<{ period: string; file: string; minutes: number }>(
     db,
-    `SELECT ${period("c.start", unit)} AS period, t.file, sum(c.minutes) AS minutes
-     FROM clocks_local c JOIN tasks t ON t.id = c.task_id
-     WHERE substr(c.start, 1, 10) >= ?1 GROUP BY period, t.file ORDER BY period`,
+    `SELECT ${calendarPeriod(unit)} AS period, t.file, sum(s.minutes) AS minutes
+     FROM clocks_local s JOIN tasks t ON t.id = s.task_id JOIN calendar c ON c.date = substr(s.start, 1, 10)
+     WHERE c.date >= ?1 GROUP BY period, t.file ORDER BY period`,
     [startedAt],
   );
   const totals = new Map<string, number>();
@@ -311,12 +252,13 @@ export function workByProject(db: Database, startedAt: string, unit: TimeUnit): 
   const top = new Set(ranked.slice(0, TOP_PROJECTS));
   const projects = [...ranked.slice(0, TOP_PROJECTS), ...(ranked.length > TOP_PROJECTS ? [OTHER_PROJECTS] : [])];
 
-  const byPeriod = new Map<string, Record<string, string | number>>();
+  const byPeriod = new Map(
+    calendarPeriods(db, startedAt, unit).map(({ period }) => [period, Object.fromEntries([["period", period], ...projects.map((p) => [p, 0])])]),
+  );
   for (const c of cells) {
-    const row = byPeriod.get(c.period) ?? { period: c.period };
+    const row = byPeriod.get(c.period)!;
     const key = top.has(c.file) ? c.file : OTHER_PROJECTS;
-    row[key] = ((row[key] as number | undefined) ?? 0) + c.minutes;
-    byPeriod.set(c.period, row);
+    row[key] = (row[key] as number) + c.minutes;
   }
   return { data: [...byPeriod.values()], projects };
 }
@@ -332,11 +274,14 @@ export function activityTotals(db: Database, startedAt: string): { title: string
   );
 }
 
+/** 範囲内に一度でも実施した Activity について、暦の期間すべてを 0 で埋めて返す */
 export function activityByPeriod(db: Database, startedAt: string, unit: TimeUnit): { period: string; title: string; minutes: number }[] {
   return q(
     db,
-    `SELECT ${period("date", unit)} AS period, title, sum(minutes) AS minutes
-     FROM activity_daily WHERE date >= ?1 GROUP BY period, title ORDER BY period, title`,
+    `WITH titles AS (SELECT DISTINCT title FROM activity_daily WHERE date >= ?1)
+     SELECT ${calendarPeriod(unit)} AS period, t.title, coalesce(sum(a.minutes), 0) AS minutes
+     FROM calendar c CROSS JOIN titles t LEFT JOIN activity_daily a ON a.date = c.date AND a.title = t.title
+     WHERE c.date >= ?1 GROUP BY period, t.title ORDER BY period, t.title`,
     [startedAt],
   );
 }

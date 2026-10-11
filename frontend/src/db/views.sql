@@ -99,6 +99,8 @@ LEFT JOIN (
 LEFT JOIN (SELECT substr(start, 1, 10) AS d, sum(minutes) AS minutes FROM clocks_local GROUP BY d) w ON w.d = c.date;
 
 CREATE INDEX temp.clocks_local_task ON clocks_local (task_id, start);
+CREATE INDEX temp.clocks_local_end ON clocks_local (end);
+CREATE UNIQUE INDEX temp.tasks_local_id ON tasks_local (id);
 CREATE INDEX temp.tasks_local_completed ON tasks_local (completed_date);
 CREATE INDEX temp.session_gaps_resumed ON session_gaps (resumed_at);
 CREATE INDEX temp.activity_daily_date ON activity_daily (date);

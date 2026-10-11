@@ -22,7 +22,7 @@ export function RoiChart({ repo, startedAt, unit }: Props) {
     () =>
       repo.wipByPeriod(startedAt, unit).map(({ period, wip, throughput }) => ({
         period,
-        ROI: wip > 0 ? Math.round((throughput / wip) * 100) / 100 : 0,
+        ROI: wip > 0 ? Math.round((throughput / wip) * 100) / 100 : null,
       })),
     [repo, startedAt, unit],
   );

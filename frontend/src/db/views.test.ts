@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { tasksInRange, dailyWorkInRange } from "./charts.ts";
 import { rows } from "./database.ts";
-import { RESUME_GAP_MINUTES } from "./summary.ts";
+import { RESUME_GAP_MINUTES } from "./metricDefs.ts";
 import { createTestDatabase } from "../test/db.ts";
 import type { TaskRow } from "./rows.ts";
 

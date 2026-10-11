@@ -17,8 +17,8 @@ export function LittlesLaw({ repo, startedAt, unit }: Props) {
     () =>
       repo.wipByPeriod(startedAt, unit).map(({ period, wip, throughput, avgLead }) => ({
         period,
-        "Actual LT": avgLead === null ? 0 : Math.round(avgLead * 10) / 10,
-        "Predicted (WIP/T)": throughput > 0 ? Math.round((wip / throughput) * 10) / 10 : 0,
+        "Actual LT": avgLead === null ? null : Math.round(avgLead * 10) / 10,
+        "Predicted (WIP/T)": throughput > 0 ? Math.round((wip / throughput) * 10) / 10 : null,
         WIP: wip,
       })),
     [repo, startedAt, unit],

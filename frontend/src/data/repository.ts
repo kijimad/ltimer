@@ -8,7 +8,7 @@ export interface PeriodCount {
 }
 
 export interface LeadTimePercentiles {
-  data: { period: string; p50: number; p85: number; p95: number }[];
+  data: { period: string; p50: number | null; p85: number | null; p95: number | null }[];
   globalP85: number;
 }
 
@@ -97,7 +97,7 @@ export interface TaskRepository {
   alertTodos(startedAt: string, thresholdDays: number): Pick<Task, "title" | "file" | "lead_time_days">[];
   fileSummary(startedAt: string): FileSummaryRow[];
   throughputByPeriod(startedAt: string, unit: TimeUnit): PeriodCount[];
-  leadTimePercentiles(startedAt: string, unit: TimeUnit): LeadTimePercentiles;
+  leadTimePercentiles(startedAt: string, asOf: string, unit: TimeUnit): LeadTimePercentiles;
   leadTimeHistogram(startedAt: string, unit: TimeUnit): LeadTimeHistogram;
   wipByPeriod(startedAt: string, unit: TimeUnit): WipPoint[];
   cumulativeFlow(startedAt: string, unit: TimeUnit): FlowPoint[];

@@ -80,7 +80,7 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "percentile",
         title: "Lead Time Percentile (SLE)",
         desc: "期間ごとの完了タスクのリードタイム50th/85th/95thパーセンタイル推移。85thパーセンタイルがサービスレベル期待値(SLE)となり、予測可能性の指標になる",
-        render: ({ repo, startedAt, unit }) => <PercentileChart repo={repo} startedAt={startedAt} unit={unit} />,
+        render: ({ repo, startedAt, asOf, unit }) => <PercentileChart repo={repo} startedAt={startedAt} asOf={asOf} unit={unit} />,
       },
       {
         key: "batch-size",
@@ -103,7 +103,7 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "wip-trend",
         title: "WIP Trend",
-        desc: "期間ごとの仕掛かり(WIP)数の推移。WIPが増え続けていれば着手過多でボトルネックの兆候",
+        desc: "各期間の終わりのアクティブ WIP (未完了で14日以内に CLOCK したタスク) の推移。WIPが増え続けていれば着手過多でボトルネックの兆候",
         render: ({ repo, startedAt, unit }) => <WipTrend repo={repo} startedAt={startedAt} unit={unit} />,
       },
       {
@@ -115,13 +115,13 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "cfd",
         title: "Cumulative Flow Diagram",
-        desc: "期間ごとのStarted/Completed/Closedの累積数を積み上げ面グラフで表示。バンド(帯)の幅がWIP量を示し、広がっていれば仕掛かりが増加している",
+        desc: "範囲の始まりからのStarted/Completed/Closedの累積数を面グラフで表示。StartedとCompletedの差が範囲内で増えた仕掛かりで、広がっていれば着手が完了を上回っている",
         render: ({ repo, startedAt, unit }) => <CfdChart repo={repo} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "burn",
         title: "Burn Chart",
-        desc: "日ごとの累積Started/Completed数とWIP数を表示。Started-Completedの差がWIP。二つの線が離れるほど仕掛かりが溜まっている",
+        desc: "範囲の始まりからの日ごとの累積Started/Completed数と、その日のアクティブ WIP を表示。二つの線が離れるほど着手が完了を上回っている",
         render: ({ repo, startedAt }) => <BurnChart repo={repo} startedAt={startedAt} />,
       },
       {
@@ -205,13 +205,13 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "roi",
         title: "ROI (T / I)",
-        desc: "投資収益率 = スループット(T) / 在庫(I)。期間あたり完了数÷WIP数。高いほど仕掛かり在庫が効率的にスループットへ変換されている",
+        desc: "投資収益率 = スループット(T) / 在庫(I)。期間あたり完了数÷期間の終わりのアクティブ WIP 数。高いほど仕掛かり在庫が効率的にスループットへ変換されている",
         render: ({ repo, startedAt, unit }) => <RoiChart repo={repo} startedAt={startedAt} unit={unit} />,
       },
       {
         key: "cash-flow",
         title: "Cash Flow",
-        desc: "期間ごとの(完了数 - 新規着手数)を累積表示。右肩上がりなら在庫が減りスループットが勝っている健全な状態",
+        desc: "範囲の始まりからの(完了数 - 新規着手数)を累積表示。右肩上がりなら在庫が減りスループットが勝っている健全な状態",
         render: ({ repo, startedAt, unit }) => <CashFlowChart repo={repo} startedAt={startedAt} unit={unit} />,
       },
       {

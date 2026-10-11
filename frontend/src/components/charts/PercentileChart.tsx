@@ -9,12 +9,12 @@ import type { TaskRepository } from "../../data/repository.ts";
 interface Props {
   repo: TaskRepository;
   startedAt: string;
+  asOf: string;
   unit: TimeUnit;
 }
 
-export function PercentileChart({ repo, startedAt, unit }: Props) {
-  const { data, globalP85 } = useMemo(() => repo.leadTimePercentiles(startedAt, unit), [repo, startedAt, unit]);
-
+export function PercentileChart({ repo, startedAt, asOf, unit }: Props) {
+  const { data, globalP85 } = useMemo(() => repo.leadTimePercentiles(startedAt, asOf, unit), [repo, startedAt, asOf, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

@@ -14,7 +14,7 @@ export function createSqlRepository(db: Database): Repository {
       alertTodos: (s, days) => c.alertTodos(db, s, days),
       fileSummary: (s) => c.fileSummary(db, s),
       throughputByPeriod: (s, u) => c.throughputByPeriod(db, s, u),
-      leadTimePercentiles: (s, u) => c.leadTimePercentiles(db, s, u),
+      leadTimePercentiles: (s, asOf, u) => c.leadTimePercentiles(db, s, asOf, u),
       leadTimeHistogram: (s, u) => c.leadTimeHistogram(db, s, u),
       wipByPeriod: (s, u) => c.wipByPeriod(db, s, u),
       cumulativeFlow: (s, u) => c.cumulativeFlow(db, s, u),

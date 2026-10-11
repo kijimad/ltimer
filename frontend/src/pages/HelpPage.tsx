@@ -53,7 +53,7 @@ CLOCK: [2025-01-12 Sun 09:00]--[2025-01-12 Sun 09:50]  (50min)`}</Pre>
             ["Work Time", "全 CLOCK エントリの合計時間 (分)"],
             ["Flow Efficiency", "Work Time / (Lead Time x 24h)"],
             ["Wait Time Ratio", "1 - Flow Efficiency"],
-            ["WIP", "ある期間において、開始済み (first_clock_in <= 期間) かつ未完了 (completedDate > 期間 or TODO) のタスク数"],
+            ["WIP", "ある日の時点で未完了 (completedDate > その日 or TODO) で、その日までの14日以内に CLOCK したタスク数。期間の値は期間の最後の日の時点"],
             ["Throughput", "ある期間に DONE になったタスク数"],
             ["Queue Time", "セッション終了から同じタスクを再開するまでの間隔。60分未満は休憩とみなす"],
             ["再開待ち時間", "60分以上の Queue Time の中央値。手を離したタスクに戻るまでの時間"],
@@ -103,17 +103,16 @@ CLOCK: [2025-01-12 Sun 09:00]--[2025-01-12 Sun 09:50]  (50min)`}</Pre>
   対象条件: last_clock_out >= started_at  または  first_clock_in >= started_at
 
 チャートのデータポイント:
+  期間は暦の週 (月曜始まり) と月で区切り、何もない期間も 0 で並べる
+
   累積チャート (CFD, バーン, キャッシュフロー):
-    - 初期値を正しく算出するため、全期間から累積計算する
-    - 表示は started_at 以降のデータポイントのみ
+    - started_at からの開始・完了を累積する
 
   期間チャート (WIP 推移, リトルの法則, ROI):
-    - started_at 以降の期間のみ表示
-    - WIP 数は started_at 前に開始されたタスクも含む (正しい挙動)
+    - WIP は期間の終わりの時点の値で、started_at 前に開始されたタスクも含む
 
-  イベントチャート (スループット, ヒストグラム):
-    - 範囲内の完了イベントのみ集計
-    - started_at 前のイベントはタスク絞り込みで自動的に除外`}</Pre>
+  イベントチャート (スループット, パーセンタイル, ヒストグラム):
+    - 完了日が範囲内のタスクを数える。最後の CLOCK が範囲の前でも含む`}</Pre>
       </Section>
     </Box>
   );
