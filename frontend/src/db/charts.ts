@@ -68,12 +68,15 @@ export function fileSummary(db: Database, startedAt: string): FileSummaryRow[] {
 
 // --- 期間ごとの集計 ---
 
+/** 暦の週・月 */
+const calendarPeriod = (unit: TimeUnit) => (unit === "month" ? "c.month" : "c.week");
+
+/** 範囲内に完了した DONE の数。完了のない期間も 0 で返す */
 export function throughputByPeriod(db: Database, startedAt: string, unit: TimeUnit): { period: string; count: number }[] {
   return q(
     db,
-    `WITH ${FT}
-     SELECT ${period("completed_date", unit)} AS period, count(*) AS count
-     FROM ft WHERE status = 'DONE' AND completed_date IS NOT NULL GROUP BY period ORDER BY period`,
+    `SELECT ${calendarPeriod(unit)} AS period, sum(f.done) AS count
+     FROM daily_task_facts f JOIN calendar c USING (date) WHERE f.date >= ?1 GROUP BY period ORDER BY period`,
     [startedAt],
   );
 }
@@ -190,20 +193,21 @@ export function cashFlowByPeriod(db: Database, startedAt: string, unit: TimeUnit
   );
 }
 
-/** 完了数 (T) と、日ごとに時間へ丸めた作業時間の期間合計 (OE) */
+/** 完了数 (T) と、日ごとに時間へ丸めた作業時間の期間合計 (OE)。何もない期間も 0 で返す */
 export function netProfitByPeriod(db: Database, startedAt: string, unit: TimeUnit): NetProfitPoint[] {
-  const throughput = new Map(throughputByPeriod(db, startedAt, unit).map((r) => [r.period, r.count]));
-  const oe = new Map<string, number>();
-  for (const d of q<{ period: string; minutes: number }>(
+  const points = new Map<string, NetProfitPoint>();
+  for (const d of q<{ period: string; done: number; work_minutes: number }>(
     db,
-    `SELECT ${period("date", unit)} AS period, sum(minutes) AS minutes FROM daily_work WHERE date >= ?1 GROUP BY date ORDER BY date`,
+    `SELECT ${calendarPeriod(unit)} AS period, f.done, f.work_minutes
+     FROM daily_task_facts f JOIN calendar c USING (date) WHERE f.date >= ?1 ORDER BY f.date`,
     [startedAt],
   )) {
-    oe.set(d.period, (oe.get(d.period) ?? 0) + Math.round((d.minutes / 60) * 10) / 10);
+    const p = points.get(d.period) ?? { period: d.period, Throughput: 0, OE: 0 };
+    p.Throughput += d.done;
+    p.OE += Math.round((d.work_minutes / 60) * 10) / 10;
+    points.set(d.period, p);
   }
-  return [...new Set([...throughput.keys(), ...oe.keys()])]
-    .sort()
-    .map((p) => ({ period: p, Throughput: throughput.get(p) ?? 0, OE: oe.get(p) ?? 0 }));
+  return [...points.values()];
 }
 
 export function dailyWorkInRange(db: Database, startedAt: string): DailyWorkEntry[] {

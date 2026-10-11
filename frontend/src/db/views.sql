@@ -63,8 +63,45 @@ FROM (
 )
 GROUP BY task_id, block;
 
+-- データに現れる最初の日から、最後の日か生成日 (閲覧者のタイムゾーン) の遅いほうまでの全日付。週 (月曜始まり)・月・曜日 (月曜が 0) の区切りはここで決める
+CREATE TEMP TABLE calendar AS
+WITH RECURSIVE dates AS (
+  SELECT substr(start, 1, 10) AS d FROM clocks_local
+  UNION ALL SELECT completed_date FROM tasks_local WHERE completed_date IS NOT NULL
+  UNION ALL SELECT date FROM activity_daily
+  UNION ALL SELECT created FROM drafts
+  UNION ALL SELECT published FROM drafts WHERE published IS NOT NULL
+  UNION ALL SELECT substr(local_time(value), 1, 10) FROM meta WHERE key = 'generated_at'
+),
+bounds AS (SELECT min(d) AS first, max(d) AS last FROM dates),
+days(date) AS (
+  SELECT first FROM bounds WHERE first IS NOT NULL AND first <= last
+  UNION ALL
+  SELECT date(date, '+1 day') FROM days, bounds WHERE date < bounds.last
+)
+SELECT date, date(date, '-6 days', 'weekday 1') AS week, substr(date, 1, 7) AS month,
+  (CAST(strftime('%w', date) AS INTEGER) + 6) % 7 AS weekday
+FROM days;
+
+-- 暦の全日付について1日1行。何もなかった日も 0 の行になるので、期間の合計で欠けが出ない
+CREATE TEMP TABLE daily_task_facts AS
+SELECT c.date,
+  coalesce(s.n, 0) AS started,
+  coalesce(f.done, 0) AS done,
+  coalesce(f.closed, 0) AS closed,
+  coalesce(w.minutes, 0) AS work_minutes
+FROM calendar c
+LEFT JOIN (SELECT substr(first_clock_in, 1, 10) AS d, count(*) AS n FROM tasks_local GROUP BY d) s ON s.d = c.date
+LEFT JOIN (
+  SELECT completed_date AS d, sum(status = 'DONE') AS done, sum(status = 'CLOSE') AS closed
+  FROM tasks_local WHERE completed_date IS NOT NULL GROUP BY d
+) f ON f.d = c.date
+LEFT JOIN (SELECT substr(start, 1, 10) AS d, sum(minutes) AS minutes FROM clocks_local GROUP BY d) w ON w.d = c.date;
+
 CREATE INDEX temp.clocks_local_task ON clocks_local (task_id, start);
 CREATE INDEX temp.tasks_local_completed ON tasks_local (completed_date);
 CREATE INDEX temp.session_gaps_resumed ON session_gaps (resumed_at);
 CREATE INDEX temp.activity_daily_date ON activity_daily (date);
 CREATE INDEX temp.focus_blocks_start ON focus_blocks (start);
+CREATE UNIQUE INDEX temp.calendar_date ON calendar (date);
+CREATE UNIQUE INDEX temp.daily_task_facts_date ON daily_task_facts (date);

@@ -135,3 +135,30 @@ describe("focus_blocks", () => {
   });
 });
 
+describe("calendar and daily_task_facts", () => {
+  const db = createTestDatabase({
+    generatedAt: "2024-01-10T03:00:00Z",
+    tasks: [
+      // JST 01-03 (水) に開始、01-05 (金) に完了
+      rawTask({ title: "done", closed_at: "2024-01-05T03:00:00Z", clocks: [{ start: "2024-01-03T00:00:00Z", end: "2024-01-03T01:00:00Z", minutes: 60 }] }),
+      rawTask({ title: "close", status: "CLOSE", closed_at: "2024-01-05T05:00:00Z", clocks: [{ start: "2024-01-04T00:00:00Z", end: "2024-01-04T00:30:00Z", minutes: 30 }] }),
+    ],
+  });
+
+  it("lists every date from the first data date to the generated date", () => {
+    const days = rows<{ date: string; week: string; month: string; weekday: number }>(db, "SELECT * FROM calendar ORDER BY date");
+    expect(days.map((d) => d.date)).toEqual(["2024-01-03", "2024-01-04", "2024-01-05", "2024-01-06", "2024-01-07", "2024-01-08", "2024-01-09", "2024-01-10"]);
+    expect(days[0]).toEqual({ date: "2024-01-03", week: "2024-01-01", month: "2024-01", weekday: 2 });
+    expect(days[5]).toMatchObject({ date: "2024-01-08", week: "2024-01-08", weekday: 0 });
+  });
+
+  it("has one row per date with zeros for empty days", () => {
+    expect(rows(db, "SELECT * FROM daily_task_facts WHERE date <= '2024-01-06' ORDER BY date")).toEqual([
+      { date: "2024-01-03", started: 1, done: 0, closed: 0, work_minutes: 60 },
+      { date: "2024-01-04", started: 1, done: 0, closed: 0, work_minutes: 30 },
+      { date: "2024-01-05", started: 0, done: 1, closed: 1, work_minutes: 0 },
+      { date: "2024-01-06", started: 0, done: 0, closed: 0, work_minutes: 0 },
+    ]);
+  });
+});
+

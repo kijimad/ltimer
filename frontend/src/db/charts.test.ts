@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { interruptionsByPeriod, queueTimeHistogram, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod } from "./charts.ts";
+import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod } from "./charts.ts";
 import { rows } from "./database.ts";
 import { createTestDatabase, fromTasks } from "../test/db.ts";
 import type { Task, TaskClock } from "../types/index.ts";
@@ -163,12 +163,27 @@ describe("workByProject", () => {
 });
 
 describe("netProfitByPeriod", () => {
-  it("fills zero where a period has only throughput or only work", () => {
+  it("fills zero for periods without throughput or work", () => {
     const done = { ...task("done", [{ start: "2024-01-01 09:00", end: "2024-01-01 09:25", minutes: 25 }]), closed_at: "2024-01-01 10:00" };
     const work = { ...task("work", [{ start: "2024-01-08 09:00", end: "2024-01-08 10:30", minutes: 90 }]), status: "TODO" as const };
-    expect(netProfitByPeriod(db([done, work]), "2024-01-01", "week")).toEqual([
+    const points = netProfitByPeriod(db([done, work]), "2024-01-01", "week");
+    expect(points.slice(0, 2)).toEqual([
       { period: "2024-01-01", Throughput: 1, OE: 0.4 },
       { period: "2024-01-08", Throughput: 0, OE: 1.5 },
+    ]);
+    // 生成日 (03-01) までの、何もない週も 0 で並ぶ
+    expect(points.at(-1)).toEqual({ period: "2024-02-26", Throughput: 0, OE: 0 });
+  });
+});
+
+describe("throughputByPeriod", () => {
+  it("returns zero for weeks without DONE", () => {
+    const done = (d: string) => ({ ...task(d, [{ start: `${d} 09:00`, end: `${d} 09:25`, minutes: 25 }]), closed_at: `${d} 10:00` });
+    // 01-01 の週と 01-15 の週に完了があり、01-08 の週はない
+    expect(throughputByPeriod(db([done("2024-01-01"), done("2024-01-15")]), "2024-01-01", "week").slice(0, 3)).toEqual([
+      { period: "2024-01-01", count: 1 },
+      { period: "2024-01-08", count: 0 },
+      { period: "2024-01-15", count: 1 },
     ]);
   });
 });

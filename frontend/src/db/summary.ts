@@ -74,7 +74,7 @@ export function taskSummary(db: Database, asOf: string, range: TimeRange): Summa
 
   return {
     gauges: [
-      g(`SELECT count(*) AS v ${DONE_IN}`, {
+      g("SELECT coalesce(sum(done), 0) AS v FROM daily_task_facts WHERE date BETWEEN ?1 AND ?2", {
         key: "throughput", label: "スループット", desc: "DONE 数", unit: "件", higherIsBetter: true,
       }),
       g(`SELECT percentile(lead_time_days, 85) AS v ${DONE_IN}`, {

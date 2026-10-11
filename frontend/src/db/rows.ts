@@ -17,6 +17,8 @@ export const LOCAL_TABLES = {
   activity_daily: ["date", "title", "minutes"],
   session_gaps: ["task_id", "resumed_at", "minutes"],
   focus_blocks: ["task_id", "start", "end", "minutes", "sessions"],
+  calendar: ["date", "week", "month", "weekday"],
+  daily_task_facts: ["date", "started", "done", "closed", "work_minutes"],
 } as const;
 
 /** 時点は UTC の ISO 8601、日付は YYYY-MM-DD */
