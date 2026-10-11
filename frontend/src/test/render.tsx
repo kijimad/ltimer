@@ -4,6 +4,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { useState, type ReactElement, type ReactNode } from "react";
 import { TimeRangeProvider } from "../components/TimeRangeProvider.tsx";
 import { LayoutSlotsContext } from "../hooks/useLayoutSlots.ts";
+import { DatabaseContext, type DatabaseState } from "../hooks/useDatabase.ts";
 
 function Wrapper({ children }: { children: ReactNode }) {
   return <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
@@ -28,12 +29,17 @@ export function renderWithChakra(ui: ReactElement, options?: RenderOptions) {
   return render(ui, { wrapper: Wrapper, ...options });
 }
 
-export function renderWithRouter(ui: ReactNode, { route = "/" } = {}) {
+export function renderWithRouter(
+  ui: ReactNode,
+  { route = "/", database = { db: null, error: null } }: { route?: string; database?: DatabaseState } = {},
+) {
   return render(
     <ChakraProvider value={defaultSystem}>
-      <MemoryRouter initialEntries={[route]}>
-        <LayoutHarness>{ui}</LayoutHarness>
-      </MemoryRouter>
+      <DatabaseContext.Provider value={database}>
+        <MemoryRouter initialEntries={[route]}>
+          <LayoutHarness>{ui}</LayoutHarness>
+        </MemoryRouter>
+      </DatabaseContext.Provider>
     </ChakraProvider>
   );
 }

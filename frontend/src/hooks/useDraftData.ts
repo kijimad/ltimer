@@ -1,16 +1,9 @@
-import { useEffect, useState } from "react";
-import type { DraftData } from "../types/index.ts";
+import { useMemo } from "react";
+import { useDatabase } from "./useDatabase.ts";
+import { loadDraft } from "../db/queries.ts";
 
 export function useDraftData() {
-  const [data, setData] = useState<DraftData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}draft-data.json`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, []);
-
+  const { db, error } = useDatabase();
+  const data = useMemo(() => (db ? loadDraft(db) : null), [db]);
   return { data, error };
 }
