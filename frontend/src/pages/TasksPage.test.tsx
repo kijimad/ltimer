@@ -28,7 +28,7 @@ describe("TasksPage", () => {
   it("ends the range at the generated date, not the viewing date", async () => {
     renderWithRouter(<TasksPage />);
     await waitFor(() => {
-      expect(screen.getByText("2023-12-01 ~ 2024-03-01")).toBeInTheDocument();
+      expect(screen.getByText("2024-02-01 ~ 2024-03-01")).toBeInTheDocument();
     });
   });
 

@@ -3,7 +3,7 @@ import type { TimeRange, TimeUnit } from "../types/index.ts";
 import { addDays, addMonths } from "../dates.ts";
 
 export function useTimeRange() {
-  const [range, setRange] = useState<TimeRange>("3m");
+  const [range, setRange] = useState<TimeRange>("1m");
   return { range, setRange };
 }
 
