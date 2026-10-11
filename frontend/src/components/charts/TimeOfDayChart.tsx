@@ -7,7 +7,7 @@ import { AXIS_STROKE, TOOLTIP_DIV_STYLE } from "./colors.ts";
 import type { RhythmPoint } from "../../metrics.ts";
 
 interface Props {
-  repo: TaskRepository;
+  repo: Pick<TaskRepository, "workByWeekdayHour">;
   startedAt: string;
   asOf: string;
 }

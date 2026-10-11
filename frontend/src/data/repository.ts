@@ -120,7 +120,8 @@ export interface ActivityRepository {
   /** 並びは初めて現れた順 */
   totals(startedAt: string): { title: string; minutes: number }[];
   byPeriod(startedAt: string, unit: TimeUnit): { period: string; title: string; minutes: number }[];
-  minutesByDate(startedAt: string): { date: string; minutes: number }[];
+  /** 各セッションの時間を開始した曜日・時間帯に数える */
+  workByWeekdayHour(startedAt: string): WeekdayHourMinutes[];
   streaks(startedAt: string, asOf: string): Streak[];
 }
 

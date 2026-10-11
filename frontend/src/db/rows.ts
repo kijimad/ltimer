@@ -14,6 +14,7 @@ export const LOCAL_TABLES = {
   clocks_local: ["seq", "task_id", "start", "end", "minutes"],
   tasks_local: ["id", "title", "file", "status", "first_clock_in", "last_clock_out", "closed_at", "lead_time_days", "total_minutes", "clock_count", "completed_date"],
   daily_work: ["date", "title", "minutes"],
+  activity_clocks_local: ["title", "start", "end", "minutes"],
   activity_daily: ["date", "title", "minutes"],
   session_gaps: ["task_id", "resumed_at", "minutes"],
   focus_blocks: ["task_id", "start", "end", "minutes", "sessions"],

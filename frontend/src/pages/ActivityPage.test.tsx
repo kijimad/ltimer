@@ -21,6 +21,14 @@ describe("ActivityPage", () => {
     });
   });
 
+  it("shows the daily rhythm of activities by weekday", async () => {
+    renderWithRouter(<ActivityPage />, { repository });
+    await waitFor(() => {
+      expect(screen.getByText("Time of Day")).toBeInTheDocument();
+    });
+    expect(["月", "火", "水", "木", "金", "土", "日"].map((d) => screen.getByRole("img", { name: `${d}曜日` }))).toHaveLength(7);
+  });
+
   it("buckets activity into the local date and shows it in streaks", async () => {
     renderWithRouter(<ActivityPage />, { repository });
     // UTC 02-29 23:00 は JST 03-01 08:00。基準日 03-01 当日の実施になり現在のストリークが 1d

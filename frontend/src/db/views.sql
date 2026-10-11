@@ -28,9 +28,13 @@ FROM clocks_local c
 JOIN tasks t ON t.id = c.task_id
 GROUP BY date, t.title;
 
+CREATE TEMP TABLE activity_clocks_local AS
+SELECT title, local_time(start) AS start, local_time(end) AS end, minutes
+FROM activity_clocks;
+
 CREATE TEMP TABLE activity_daily AS
-SELECT substr(local_time(start), 1, 10) AS date, title, sum(minutes) AS minutes
-FROM activity_clocks
+SELECT substr(start, 1, 10) AS date, title, sum(minutes) AS minutes
+FROM activity_clocks_local
 GROUP BY date, title;
 
 -- 前のセッションに含まれるセッションがあるので、それまでで最も遅い終了から測る。重なれば 0

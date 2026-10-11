@@ -32,7 +32,7 @@ export function createSqlRepository(db: Database): Repository {
       summary: (asOf, range) => activitySummary(db, asOf, range),
       totals: (s) => c.activityTotals(db, s),
       byPeriod: (s, u) => c.activityByPeriod(db, s, u),
-      minutesByDate: (s) => c.activityMinutesByDate(db, s),
+      workByWeekdayHour: (s) => c.activityByWeekdayHour(db, s),
       streaks: (s, asOf) => c.activityStreaks(db, s, asOf),
     },
     drafts: {

@@ -3,7 +3,7 @@ import type { Task, TaskClock, TimeUnit, DailyWorkEntry, DraftEntry } from "../t
 import { rows } from "./database.ts";
 import { daysBetween } from "../dates.ts";
 import { RESUME_GAP_MINUTES, TASK_METRICS, FLOW_METRICS, leadTimePercentile, series, evaluate, calendarPeriods } from "./metricDefs.ts";
-import type { FileSummaryRow, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
+import type { FileSummaryRow, WeekdayHourMinutes, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
 
 /** Tasks ページの対象: 範囲内 (?1 以降) に触ったタスク。並びは表示の基準 (リードタイムの降順) */
 const FT = `ft AS (
@@ -225,14 +225,16 @@ export function focusBlockHistogram(db: Database, startedAt: string): { bucket: 
   return FOCUS_BUCKETS.map((b, i) => ({ bucket: b.label, count: counts.get(i) ?? 0 }));
 }
 
-export function workByWeekdayHour(db: Database, startedAt: string): { weekday: number; hour: number; minutes: number }[] {
+function minutesByWeekdayHour(db: Database, table: "clocks_local" | "activity_clocks_local", startedAt: string): WeekdayHourMinutes[] {
   return q(
     db,
     `SELECT (CAST(strftime('%w', start) AS INTEGER) + 6) % 7 AS weekday, CAST(strftime('%H', start) AS INTEGER) AS hour, sum(minutes) AS minutes
-     FROM clocks_local WHERE substr(start, 1, 10) >= ?1 GROUP BY weekday, hour ORDER BY weekday, hour`,
+     FROM ${table} WHERE substr(start, 1, 10) >= ?1 GROUP BY weekday, hour ORDER BY weekday, hour`,
     [startedAt],
   );
 }
+
+export const workByWeekdayHour = (db: Database, startedAt: string) => minutesByWeekdayHour(db, "clocks_local", startedAt);
 
 export const OTHER_PROJECTS = "その他";
 const TOP_PROJECTS = 7;
@@ -285,13 +287,7 @@ export function activityByPeriod(db: Database, startedAt: string, unit: TimeUnit
   );
 }
 
-export function activityMinutesByDate(db: Database, startedAt: string): { date: string; minutes: number }[] {
-  return q(
-    db,
-    "SELECT date, sum(minutes) AS minutes FROM activity_daily WHERE date >= ?1 GROUP BY date ORDER BY date",
-    [startedAt],
-  );
-}
+export const activityByWeekdayHour = (db: Database, startedAt: string) => minutesByWeekdayHour(db, "activity_clocks_local", startedAt);
 
 /**
  * Activity ごとの最長・現在のストリークと実施率。連続する日の島を「日付 - 島内の順番」で見分ける。

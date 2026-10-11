@@ -5,7 +5,7 @@ import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
 import { ActivitySummary } from "../components/charts/ActivitySummary.tsx";
 import { ActivityTrend } from "../components/charts/ActivityTrend.tsx";
-import { ActivityHeatmap } from "../components/charts/ActivityHeatmap.tsx";
+import { TimeOfDayChart } from "../components/charts/TimeOfDayChart.tsx";
 import { StreakTable } from "../components/charts/StreakTable.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
 import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
@@ -45,8 +45,8 @@ export function ActivityPage() {
         <ChartCard title="Activity Trend" desc="期間ごとの投下時間推移" full>
           <ActivityTrend repo={repo.activities} startedAt={startedAt} unit={unit} />
         </ChartCard>
-        <ChartCard title="Activity Heatmap" desc="曜日×時間帯のアクティビティ分布（直近期間の日ごと投下時間）" full>
-          <ActivityHeatmap repo={repo.activities} startedAt={startedAt} />
+        <ChartCard title="Time of Day" desc="時間帯ごとの1日あたり平均投下時間を曜日ごとに比べる。各セッションを開始した時間帯に数え、合計を範囲内のその曜日の日数で割る" full>
+          <TimeOfDayChart repo={repo.activities} startedAt={startedAt} asOf={asOf} />
         </ChartCard>
         <ChartCard title="Streaks" desc="連続実施日数と現在のストリーク" full>
           <StreakTable repo={repo.activities} startedAt={startedAt} asOf={asOf} />

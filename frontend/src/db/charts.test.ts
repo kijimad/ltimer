@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod, wipByPeriod, cumulativeFlow, burnByDate, cashFlowByPeriod, activityByPeriod } from "./charts.ts";
+import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod, wipByPeriod, cumulativeFlow, burnByDate, cashFlowByPeriod, activityByPeriod, activityByWeekdayHour } from "./charts.ts";
 import { rows } from "./database.ts";
 import { createTestDatabase, fromTasks, fromDaily } from "../test/db.ts";
 import type { Task, TaskClock } from "../types/index.ts";
@@ -147,6 +147,16 @@ describe("workByWeekdayHour", () => {
       { weekday: 6, hour: 22, minutes: 25 },
     ]);
   });
+
+  it("counts activity sessions the same way, from startedAt", () => {
+    const utc = (local: string) => new Date(local.replace(" ", "T")).toISOString();
+    const clock = (start: string, minutes: number) => ({ start: utc(start), end: utc(start), minutes });
+    const a = createTestDatabase({
+      generatedAt: "2024-03-01T03:00:00Z",
+      activities: [{ title: "read", clocks: [clock("2023-12-31 07:00", 10), clock("2024-01-01 07:10", 15), clock("2024-01-08 07:40", 5)] }],
+    });
+    expect(activityByWeekdayHour(a, "2024-01-01")).toEqual([{ weekday: 0, hour: 7, minutes: 20 }]);
+  });
 });
 
 describe("workByProject", () => {
@@ -211,6 +221,14 @@ describe("wipByPeriod", () => {
       // 01-03 の CLOCK は 01-21 から見て14日より前
       { period: "2024-01-15", days: 7, wip: 0, throughput: 0, avgLead: null },
     ]);
+  });
+
+  it("counts only the days inside the range for partial periods", () => {
+    const t = task("a", [c("2024-01-03 09:00", "2024-01-03 09:25")]);
+    const points = wipByPeriod(db([t]), "2024-01-03", "week");
+    expect(points[0].days).toBe(5);
+    // 生成日 03-01 (金) で終わる
+    expect(points.at(-1)).toMatchObject({ period: "2024-02-26", days: 5 });
   });
 });
 
