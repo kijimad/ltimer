@@ -40,4 +40,11 @@ describe("ActivityPage", () => {
       expect(screen.getByText(/Network error/)).toBeInTheDocument();
     });
   });
+
+  it("shows the generated time", async () => {
+    renderWithRouter(<ActivityPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/Generated: .* \(Asia\/Tokyo\)/)).toBeInTheDocument();
+    });
+  });
 });

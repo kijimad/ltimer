@@ -6,7 +6,7 @@ import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
 import { CHART_GROUPS } from "../chartConfig.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
-import { GeneratedAt } from "../components/GeneratedAt.tsx";
+import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate } from "../dates.ts";
 import { taskSummary } from "../metrics.ts";
@@ -41,8 +41,8 @@ export function TasksPage() {
 
   return (
     <Box p={5}>
-      <Heading size="lg" color="blue.600" mb={1}>Lead Time Dashboard</Heading>
-      <GeneratedAt generatedAt={data.generated_at} now={now} />
+      <Heading size="lg" color="blue.600" mb={5}>Lead Time Dashboard</Heading>
+      <FooterGeneratedAt generatedAt={data.generated_at} now={now} />
       <SummaryRow summary={summary} />
       <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
       {CHART_GROUPS.map((group) => (

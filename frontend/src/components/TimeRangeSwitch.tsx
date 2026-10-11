@@ -1,7 +1,7 @@
-import { createPortal } from "react-dom";
 import type { TimeRange } from "../types/index.ts";
 import { HStack, Text, Button } from "@chakra-ui/react";
 import { useTimeRange } from "../hooks/useTimeRange.ts";
+import { LayoutPortal } from "./LayoutPortal.tsx";
 
 const OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "1w", label: "前週" },
@@ -46,10 +46,10 @@ export function TimeRangeSwitch({
 
 /** 範囲の日付はページのデータ生成日で決まるので、ページからナビゲーションバーへ描画する */
 export function NavTimeRangeSwitch({ startedAt, finishedAt }: { startedAt: string; finishedAt: string }) {
-  const { range, setRange, slot } = useTimeRange();
-  if (!slot) return null;
-  return createPortal(
-    <TimeRangeSwitch range={range} onChange={setRange} startedAt={startedAt} finishedAt={finishedAt} />,
-    slot,
+  const { range, setRange } = useTimeRange();
+  return (
+    <LayoutPortal to="nav">
+      <TimeRangeSwitch range={range} onChange={setRange} startedAt={startedAt} finishedAt={finishedAt} />
+    </LayoutPortal>
   );
 }

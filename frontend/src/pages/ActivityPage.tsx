@@ -9,7 +9,7 @@ import { ActivityTrend } from "../components/charts/ActivityTrend.tsx";
 import { ActivityHeatmap } from "../components/charts/ActivityHeatmap.tsx";
 import { StreakTable } from "../components/charts/StreakTable.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
-import { GeneratedAt } from "../components/GeneratedAt.tsx";
+import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate } from "../dates.ts";
 import { activitySummary } from "../metrics.ts";
@@ -39,8 +39,8 @@ export function ActivityPage() {
 
   return (
     <Box p={5}>
-      <Heading size="lg" color="blue.600" mb={1}>Activity Dashboard</Heading>
-      <GeneratedAt generatedAt={data.generated_at} now={now} />
+      <Heading size="lg" color="blue.600" mb={5}>Activity Dashboard</Heading>
+      <FooterGeneratedAt generatedAt={data.generated_at} now={now} />
       <SummaryRow summary={summary} />
       <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={5}>

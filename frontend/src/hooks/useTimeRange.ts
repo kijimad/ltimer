@@ -5,8 +5,6 @@ import { addDays, addMonths } from "../dates.ts";
 export interface TimeRangeState {
   range: TimeRange;
   setRange: (r: TimeRange) => void;
-  /** 集計範囲スイッチを描画するナビゲーションバー内の要素 */
-  slot: HTMLElement | null;
 }
 
 export const TimeRangeContext = createContext<TimeRangeState | null>(null);

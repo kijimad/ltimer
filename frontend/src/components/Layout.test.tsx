@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Routes, Route } from "react-router-dom";
 import { Layout } from "./Layout.tsx";
 import { NavTimeRangeSwitch } from "./TimeRangeSwitch.tsx";
+import { FooterGeneratedAt } from "./GeneratedAt.tsx";
 import { useTimeRange } from "../hooks/useTimeRange.ts";
 import { renderWithRouter } from "../test/render.tsx";
 
@@ -13,6 +14,7 @@ function RangePage({ name }: { name: string }) {
     <>
       <p>{name}: {range}</p>
       <NavTimeRangeSwitch startedAt="2026-09-11" finishedAt="2026-10-11" />
+      <FooterGeneratedAt generatedAt="2026-10-11T06:00:00Z" now={Date.parse("2026-10-11T07:00:00Z")} />
     </>
   );
 }
@@ -55,5 +57,15 @@ describe("Layout", () => {
   it("hides the switch on pages without a time range", () => {
     renderApp("/help");
     expect(screen.queryByText("前月")).not.toBeInTheDocument();
+  });
+
+  it("renders the generated time inside the footer", () => {
+    renderApp();
+    expect(within(screen.getByRole("contentinfo")).getByText(/Generated: 2026-10-11 15:00/)).toBeInTheDocument();
+  });
+
+  it("leaves the footer empty on pages without data", () => {
+    renderApp("/help");
+    expect(screen.getByRole("contentinfo")).toBeEmptyDOMElement();
   });
 });

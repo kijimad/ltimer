@@ -48,4 +48,11 @@ describe("DraftPage", () => {
       expect(screen.getByRole("img", { name: "未公開 Draft" })).toBeInTheDocument();
     });
   });
+
+  it("shows the generated time", async () => {
+    renderWithRouter(<DraftPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/Generated: .* \(Asia\/Tokyo\)/)).toBeInTheDocument();
+    });
+  });
 });
