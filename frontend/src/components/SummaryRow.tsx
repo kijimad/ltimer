@@ -14,7 +14,10 @@ export function SummaryRow({ summary }: { summary: Summary }) {
             {summary.tiles.map((t) => (
               <Box key={t.key}>
                 <Text fontSize="sm" fontWeight="bold" color="gray.700">{t.label}</Text>
-                <Text fontSize="2xl" fontWeight="bold" lineHeight="1.1" color="gray.700">{t.value}</Text>
+                <Text fontSize="2xl" fontWeight="bold" lineHeight="1.1" color={t.alert ? "red.500" : "gray.700"}>
+                  {t.value}
+                  {t.unit && <Text as="span" fontSize="sm" color="gray.500" ml={1}>{t.unit}</Text>}
+                </Text>
                 <Text fontSize="xs" color="gray.400">{t.desc}</Text>
               </Box>
             ))}

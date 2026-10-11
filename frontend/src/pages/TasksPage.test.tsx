@@ -26,6 +26,14 @@ describe("TasksPage", () => {
     });
   });
 
+  it("warns that the data is stale against the viewing time", async () => {
+    renderWithRouter(<TasksPage />);
+    // フィクスチャは 2024-03-01 生成なので、閲覧時点からは必ず 24時間を超えている
+    await waitFor(() => {
+      expect(screen.getByText(/データが更新されていない/)).toBeInTheDocument();
+    });
+  });
+
   it("ends the range at the generated date, not the viewing date", async () => {
     renderWithRouter(<TasksPage />);
     await waitFor(() => {

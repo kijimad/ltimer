@@ -35,6 +35,10 @@ export function localDateTime(instant: string): string {
   return `${localDate(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+export function hoursSince(instant: string, nowMs: number): number {
+  return (nowMs - new Date(instant).getTime()) / 3600000;
+}
+
 export function formatGeneratedAt(generatedAt: string): string {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return `${localDateTime(generatedAt)} (${zone})`;

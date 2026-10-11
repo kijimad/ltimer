@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Box, Heading, Text, SimpleGrid } from "@chakra-ui/react";
+import { Box, Heading, SimpleGrid } from "@chakra-ui/react";
 import { useActivityData } from "../hooks/useActivityData.ts";
 import { useTimeRange, rangeDates, unitForRange } from "../hooks/useTimeRange.ts";
 import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
@@ -9,12 +9,15 @@ import { ActivityTrend } from "../components/charts/ActivityTrend.tsx";
 import { ActivityHeatmap } from "../components/charts/ActivityHeatmap.tsx";
 import { StreakTable } from "../components/charts/StreakTable.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
-import { asOfDate, formatGeneratedAt } from "../dates.ts";
+import { GeneratedAt } from "../components/GeneratedAt.tsx";
+import { useMountTime } from "../hooks/useMountTime.ts";
+import { asOfDate } from "../dates.ts";
 import { activitySummary } from "../metrics.ts";
 
 export function ActivityPage() {
   const { data, error } = useActivityData();
   const { range } = useTimeRange();
+  const now = useMountTime();
 
   const unit = unitForRange(range);
 
@@ -37,9 +40,7 @@ export function ActivityPage() {
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Activity Dashboard</Heading>
-      <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {formatGeneratedAt(data.generated_at)}
-      </Text>
+      <GeneratedAt generatedAt={data.generated_at} now={now} />
       <SummaryRow summary={summary} />
       <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={5}>

@@ -65,6 +65,24 @@ describe("taskSummary", () => {
     expect(gauge(s, "flow-efficiency").value).toBe(10);
   });
 
+  it("reports days since the last DONE and alerts beyond the usual p90 interval", () => {
+    const done = (d: string) => task({ closed_at: `${d} 10:00` });
+    // DONE の間隔は 1, 1, 2 日 → p90 は 2日。最後の DONE (02-25) から 03-01 までは 5日
+    const s = taskSummary([done("2024-02-20"), done("2024-02-21"), done("2024-02-22"), done("2024-02-24"), done("2024-02-25")], TODAY, "1m");
+    expect(tile(s, "since-last-done")).toMatchObject({ value: 5, alert: true });
+    const fresh = taskSummary([done("2024-02-27"), done("2024-02-28"), done("2024-02-29")], TODAY, "1m");
+    expect(tile(fresh, "since-last-done")).toMatchObject({ value: 1, alert: false });
+  });
+
+  it("does not claim a usual interval when DONE exists on only one date", () => {
+    const s = taskSummary([task({ closed_at: "2024-02-01 10:00" })], TODAY, "1m");
+    expect(tile(s, "since-last-done")).toMatchObject({ value: 29, alert: false, desc: "いつもの間隔はまだ測れない" });
+  });
+
+  it("omits the last DONE tile when nothing is done", () => {
+    expect(taskSummary([], TODAY, "1m").tiles.map((t) => t.key)).toEqual(["active-wip"]);
+  });
+
   it("counts TODO touched within 14 days as active WIP", () => {
     const s = taskSummary([
       // 03-01 から 13日前はアクティブ、14日前はアクティブでない
@@ -81,6 +99,12 @@ describe("draftSummary", () => {
     draft({ created: "2024-01-01" }),
     draft({ created: "2024-01-10", published: "2024-02-20", lead_time_days: 41, status: "published" }),
   ];
+
+  it("counts articles published in the range", () => {
+    const g = gauge(draftSummary(entries, TODAY, "1m"), "publish-count");
+    expect(g.value).toBe(1);
+    expect(g.higherIsBetter).toBe(true);
+  });
 
   it("counts drafts open at the end of each period", () => {
     const g = gauge(draftSummary(entries, TODAY, "1m"), "open-drafts");

@@ -10,12 +10,15 @@ import {
 import { useTimeRange, rangeDates } from "../hooks/useTimeRange.ts";
 import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
-import { asOfDate, daysBetween, formatGeneratedAt } from "../dates.ts";
+import { GeneratedAt } from "../components/GeneratedAt.tsx";
+import { useMountTime } from "../hooks/useMountTime.ts";
+import { asOfDate, daysBetween } from "../dates.ts";
 import { draftSummary } from "../metrics.ts";
 
 export function DraftPage() {
   const { data, error } = useDraftData();
   const { range } = useTimeRange();
+  const now = useMountTime();
   const [sortKey, setSortKey] = useState<string>("lead_time_days");
   const [sortDir, setSortDir] = useState(-1);
 
@@ -86,9 +89,7 @@ export function DraftPage() {
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Draft Lead Time</Heading>
-      <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {formatGeneratedAt(data.generated_at)}
-      </Text>
+      <GeneratedAt generatedAt={data.generated_at} now={now} />
       <SummaryRow summary={summary} />
       <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { localDate, addDays, addMonths, daysBetween, asOfDate, formatGeneratedAt } from "./dates.ts";
+import { localDate, addDays, addMonths, daysBetween, asOfDate, formatGeneratedAt, hoursSince } from "./dates.ts";
 
 describe("dates", () => {
   it("formats local date", () => {
@@ -29,6 +29,10 @@ describe("dates", () => {
   it("converts UTC generated_at to the local date", () => {
     expect(asOfDate("2026-10-10T14:59:59Z")).toBe("2026-10-10");
     expect(asOfDate("2026-10-10T15:00:00Z")).toBe("2026-10-11");
+  });
+
+  it("measures hours since an instant", () => {
+    expect(hoursSince("2026-10-11T00:00:00Z", Date.parse("2026-10-11T06:30:00Z"))).toBe(6.5);
   });
 
   it("formats generated_at in the local time zone", () => {

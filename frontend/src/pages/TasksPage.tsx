@@ -1,17 +1,20 @@
 import { useMemo } from "react";
-import { Box, Heading, Text, SimpleGrid } from "@chakra-ui/react";
+import { Box, Heading, SimpleGrid } from "@chakra-ui/react";
 import { useWorkflowData } from "../hooks/useWorkflowData.ts";
 import { useTimeRange, rangeDates, unitForRange } from "../hooks/useTimeRange.ts";
 import { NavTimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
 import { ChartCard } from "../components/ChartCard.tsx";
 import { CHART_GROUPS } from "../chartConfig.tsx";
 import { SummaryRow } from "../components/SummaryRow.tsx";
-import { asOfDate, formatGeneratedAt } from "../dates.ts";
+import { GeneratedAt } from "../components/GeneratedAt.tsx";
+import { useMountTime } from "../hooks/useMountTime.ts";
+import { asOfDate } from "../dates.ts";
 import { taskSummary } from "../metrics.ts";
 
 export function TasksPage() {
   const { data, error } = useWorkflowData();
   const { range } = useTimeRange();
+  const now = useMountTime();
 
   const unit = unitForRange(range);
 
@@ -39,9 +42,7 @@ export function TasksPage() {
   return (
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Lead Time Dashboard</Heading>
-      <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {formatGeneratedAt(data.generated_at)}
-      </Text>
+      <GeneratedAt generatedAt={data.generated_at} now={now} />
       <SummaryRow summary={summary} />
       <NavTimeRangeSwitch startedAt={startedAt} finishedAt={finishedAt} />
       {CHART_GROUPS.map((group) => (

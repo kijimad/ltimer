@@ -27,6 +27,8 @@ export interface TileMetric {
   label: string;
   desc: string;
   value: number;
+  unit?: string;
+  alert?: boolean;
 }
 
 export interface Summary {
@@ -135,6 +137,10 @@ export function taskSummary(tasks: Task[], asOf: string, range: TimeRange): Summ
   // TODO は現在の status しか持たず過去時点を復元できないので、分布のないタイルにする
   const todos = tasks.filter((t) => t.status === "TODO");
   const activeWip = todos.filter((t) => inWindow(t.last_clock_out.slice(0, 10), asOf, ACTIVE_WIP_DAYS)).length;
+  const doneDates = [...new Set(tasks.filter((t) => t.status === "DONE").map(completedDate).filter((d): d is string => d !== null && d <= asOf))].sort();
+  // いつもの間隔 (DONE どうしの間隔の p90) を超えて何も終わっていなければ警告する
+  const doneIntervals = doneDates.slice(1).map((d, i) => daysBetween(doneDates[i], d)).sort((a, b) => a - b);
+  const sinceLastDone = doneDates.length > 0 ? daysBetween(doneDates.at(-1)!, asOf) : null;
 
   return {
     gauges: [
@@ -159,6 +165,16 @@ export function taskSummary(tasks: Task[], asOf: string, range: TimeRange): Summ
     ],
     tiles: [
       { key: "active-wip", label: "アクティブ WIP", desc: `${ACTIVE_WIP_DAYS}日以内に CLOCK した TODO`, value: activeWip },
+      ...(sinceLastDone === null
+        ? []
+        : [{
+            key: "since-last-done",
+            label: "最後の DONE から",
+            desc: doneIntervals.length > 0 ? `いつもの間隔 (p90) は ${percentile(doneIntervals, 90)}日` : "いつもの間隔はまだ測れない",
+            value: sinceLastDone,
+            unit: "日",
+            alert: doneIntervals.length > 0 && sinceLastDone > percentile(doneIntervals, 90),
+          }]),
     ],
   };
 }
@@ -175,6 +191,7 @@ export function draftSummary(entries: DraftEntry[], asOf: string, range: TimeRan
       .sort((a, b) => a - b);
     return lts.length > 0 ? percentile(lts, 50) : null;
   };
+  const publishCount = (p: Period) => entries.filter((e) => e.published !== null && inPeriod(e.published, p)).length;
   const oldestAge = (p: Period) => {
     const ages = openAt(p.finishedAt).map((e) => daysBetween(e.created, p.finishedAt));
     return ages.length > 0 ? Math.max(...ages) : null;
@@ -182,6 +199,9 @@ export function draftSummary(entries: DraftEntry[], asOf: string, range: TimeRan
 
   return {
     gauges: [
+      gauge(periods, publishCount, {
+        key: "publish-count", label: "公開数", desc: "公開した記事の数", unit: "件", higherIsBetter: true,
+      }),
       gauge(periods, openCount, {
         key: "open-drafts", label: "未公開 Draft", desc: "現時点で draft タグが付いた記事", unit: "件", higherIsBetter: false,
       }),
