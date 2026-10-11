@@ -12,7 +12,8 @@ import { SummaryRow } from "../components/SummaryRow.tsx";
 import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate } from "../dates.ts";
-import { activitySummary } from "../metrics.ts";
+import { activitySummary } from "../db/summary.ts";
+import { useDatabase } from "../hooks/useDatabase.ts";
 
 export function ActivityPage() {
   const { data, error } = useActivityData();
@@ -30,7 +31,8 @@ export function ActivityPage() {
     return { daily };
   }, [data, dates]);
 
-  const summary = useMemo(() => (data && asOf ? activitySummary(data.daily, asOf, range) : null), [data, asOf, range]);
+  const { db } = useDatabase();
+  const summary = useMemo(() => (db && asOf ? activitySummary(db, asOf, range) : null), [db, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;

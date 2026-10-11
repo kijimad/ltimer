@@ -9,7 +9,8 @@ import { SummaryRow } from "../components/SummaryRow.tsx";
 import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate } from "../dates.ts";
-import { taskSummary } from "../metrics.ts";
+import { taskSummary } from "../db/summary.ts";
+import { useDatabase } from "../hooks/useDatabase.ts";
 
 export function TasksPage() {
   const { data, error } = useWorkflowData();
@@ -31,7 +32,8 @@ export function TasksPage() {
     return { tasks, dailyWork };
   }, [data, dates]);
 
-  const summary = useMemo(() => (data && asOf ? taskSummary(data.tasks, asOf, range) : null), [data, asOf, range]);
+  const { db } = useDatabase();
+  const summary = useMemo(() => (db && asOf ? taskSummary(db, asOf, range) : null), [db, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;

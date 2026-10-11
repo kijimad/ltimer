@@ -13,7 +13,7 @@ function nearestRank(values: number[], p: number): number | null {
 type WithAggregate = Database & {
   create_aggregate<S>(
     name: string,
-    functions: { init: () => S; step: (state: S, value: number | null, p: number) => S; finalize: (state: S) => SqlValue },
+    functions: { init: () => S; step: (state: S, value: number | null, p: number) => S; finalize: (state: S | undefined) => SqlValue },
   ): Database;
 };
 
@@ -27,7 +27,8 @@ export function attachViews(db: Database): Database {
       state.p = p;
       return state;
     },
-    finalize: (state) => nearestRank(state.values, state.p),
+    // sql.js は init を最初の step でしか呼ばないので、行が無いと state は undefined になる
+    finalize: (state) => (state ? nearestRank(state.values, state.p) : null),
   });
   db.exec(views);
   return db;

@@ -13,7 +13,8 @@ import { SummaryRow } from "../components/SummaryRow.tsx";
 import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate, daysBetween } from "../dates.ts";
-import { draftSummary } from "../metrics.ts";
+import { draftSummary } from "../db/summary.ts";
+import { useDatabase } from "../hooks/useDatabase.ts";
 
 export function DraftPage() {
   const { data, error } = useDraftData();
@@ -56,7 +57,8 @@ export function DraftPage() {
     });
   }, [filtered, sortKey, sortDir]);
 
-  const summary = useMemo(() => (data && asOf ? draftSummary(data.entries, asOf, range) : null), [data, asOf, range]);
+  const { db } = useDatabase();
+  const summary = useMemo(() => (db && asOf ? draftSummary(db, asOf, range) : null), [db, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
   if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;

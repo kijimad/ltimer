@@ -1,25 +1,64 @@
 import { describe, it, expect } from "vitest";
-import { taskSummary, draftSummary, activitySummary, summaryPeriods, scaleFrom, bandOf } from "./metrics.ts";
-import type { Task, DraftEntry, ActivityDailyEntry } from "./types/index.ts";
+import { summaryPeriods, scaleFrom, bandOf } from "./metrics.ts";
+import * as sql from "./db/summary.ts";
+import { createTestDatabase } from "./test/db.ts";
+import { addDays } from "./dates.ts";
+import type { Task, DraftEntry, ActivityDailyEntry, RawTask, TimeRange } from "./types/index.ts";
 import type { Summary } from "./metrics.ts";
 
 const TODAY = "2024-03-01";
 
+/** first_clock_in を省いたときは lead_time_days から逆算し、SQL が CLOCK から計算するリードタイムと揃える */
 function task(overrides: Partial<Task>): Task {
+  const lead = overrides.lead_time_days ?? 2;
+  const last = overrides.last_clock_out ?? "2024-02-29 10:00";
   return {
     title: "t",
     file: "f.org",
     status: "DONE",
-    first_clock_in: "2024-02-27 09:00",
-    last_clock_out: "2024-02-29 10:00",
+    first_clock_in: `${addDays(last.slice(0, 10), -lead)} 09:00`,
+    last_clock_out: last,
     closed_at: "2024-02-29 10:00",
-    lead_time_days: 2,
+    lead_time_days: lead,
     total_minutes: 60,
     clock_count: 1,
     clocks: [],
     ...overrides,
   };
 }
+
+const utc = (local: string) => new Date(local.replace(" ", "T")).toISOString();
+
+/** 表示用の Task を DB の行にする。clocks がなければ着手と最終作業の2点で作業時間を表す */
+function toRaw(t: Task): RawTask {
+  const clocks = t.clocks.length > 0
+    ? t.clocks
+    : [{ start: t.first_clock_in, end: t.first_clock_in, minutes: t.total_minutes }, { start: t.last_clock_out, end: t.last_clock_out, minutes: 0 }];
+  return {
+    title: t.title,
+    file: t.file,
+    status: t.status,
+    closed_at: t.closed_at && utc(t.closed_at),
+    clocks: clocks.map((c) => ({ start: utc(c.start), end: utc(c.end), minutes: c.minutes })),
+  };
+}
+
+const GENERATED = "2024-03-01T03:00:00Z";
+const taskSummary = (tasks: Task[], asOf: string, range: TimeRange) =>
+  sql.taskSummary(createTestDatabase({ generatedAt: GENERATED, tasks: tasks.map(toRaw) }), asOf, range);
+const draftSummary = (drafts: DraftEntry[], asOf: string, range: TimeRange) =>
+  sql.draftSummary(createTestDatabase({ generatedAt: GENERATED, drafts }), asOf, range);
+const activitySummary = (daily: ActivityDailyEntry[], asOf: string, range: TimeRange) =>
+  sql.activitySummary(
+    createTestDatabase({
+      generatedAt: GENERATED,
+      activities: daily.flatMap((d) =>
+        d.activities.map((a) => ({ title: a.title, clocks: [{ start: utc(`${d.date} 12:00`), end: utc(`${d.date} 12:30`), minutes: a.minutes }] })),
+      ),
+    }),
+    asOf,
+    range,
+  );
 
 function draft(overrides: Partial<DraftEntry>): DraftEntry {
   return { file: "f.org", title: "d", created: "2024-01-01", published: null, lead_time_days: null, status: "draft", ...overrides };
