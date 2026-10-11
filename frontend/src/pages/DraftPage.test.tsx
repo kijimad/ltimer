@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import { DraftPage } from "./DraftPage.tsx";
-import { DRAFT_DATA } from "../test/fixtures.ts";
+import { DRAFTS_DB } from "../test/fixtures.ts";
 import { createTestDatabase } from "../test/db.ts";
 import { renderWithRouter } from "../test/render.tsx";
 
-const database = { db: createTestDatabase({ generatedAt: DRAFT_DATA.generated_at, drafts: DRAFT_DATA.entries }), error: null };
+const database = { db: createTestDatabase(DRAFTS_DB), error: null };
 
 describe("DraftPage", () => {
   it("renders page title after load", async () => {

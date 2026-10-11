@@ -77,7 +77,7 @@ CLOCK: [2025-01-12 Sun 09:00]--[2025-01-12 Sun 09:50]  (50min)`}</Pre>
 
       <Section title="タイムゾーン">
         <Box as="ul" pl={5} fontSize="sm" color="gray.600">
-          <Box as="li">org の CLOCK / CLOSED はタイムゾーンを持たないので、パース時に JST と断定して UTC に変換し JSON に保存する</Box>
+          <Box as="li">org の CLOCK / CLOSED はタイムゾーンを持たないので、パース時に JST と断定して UTC に変換し DB に保存する</Box>
           <Box as="li">表示時に閲覧者のタイムゾーンへ変換してから、日付・曜日・時間帯に振り分ける</Box>
         </Box>
       </Section>

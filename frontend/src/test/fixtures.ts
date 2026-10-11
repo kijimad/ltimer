@@ -1,4 +1,5 @@
-import type { Task, DraftEntry, DraftData, RawWorkflowData } from "../types/index.ts";
+import type { Task, DraftEntry } from "../types/index.ts";
+import type { TestData } from "./db.ts";
 
 export const TASKS: Task[] = [
   {
@@ -60,8 +61,8 @@ export const TASKS: Task[] = [
   },
 ];
 
-export const RAW_WORKFLOW_DATA: RawWorkflowData = {
-  generated_at: "2024-03-01T03:00:00Z",
+export const TASKS_DB: TestData = {
+  generatedAt: "2024-03-01T03:00:00Z",
   tasks: [
     {
       title: "Implement auth",
@@ -102,7 +103,7 @@ export const DRAFT_ENTRIES: DraftEntry[] = [
   },
 ];
 
-export const DRAFT_DATA: DraftData = {
-  generated_at: "2026-03-20T03:00:00Z",
-  entries: DRAFT_ENTRIES,
+export const DRAFTS_DB: TestData = {
+  generatedAt: "2026-03-20T03:00:00Z",
+  drafts: DRAFT_ENTRIES,
 };

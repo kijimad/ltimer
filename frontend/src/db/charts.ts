@@ -1,5 +1,5 @@
 import type { Database, SqlValue } from "sql.js";
-import type { Task, TaskClock, TimeUnit, DailyWorkEntry, ActivityDailyEntry, DraftEntry } from "../types/index.ts";
+import type { Task, TaskClock, TimeUnit, DailyWorkEntry, DraftEntry } from "../types/index.ts";
 import { rows } from "./database.ts";
 import { RESUME_GAP_MINUTES } from "./summary.ts";
 
@@ -275,19 +275,6 @@ export function interruptionsByPeriod(db: Database, startedAt: string, unit: Tim
 }
 
 // --- Activity ---
-
-export function activityInRange(db: Database, startedAt: string): ActivityDailyEntry[] {
-  const byDate = new Map<string, { title: string; minutes: number }[]>();
-  for (const d of q<{ date: string; title: string; minutes: number }>(
-    db,
-    "SELECT date, title, minutes FROM activity_daily WHERE date >= ?1 ORDER BY date, title",
-    [startedAt],
-  )) {
-    if (!byDate.has(d.date)) byDate.set(d.date, []);
-    byDate.get(d.date)!.push({ title: d.title, minutes: d.minutes });
-  }
-  return [...byDate].map(([date, activities]) => ({ date, activities }));
-}
 
 /** 並びは初めて現れた順 (日付、同じ日はタイトル順) */
 export function activityTotals(db: Database, startedAt: string): { title: string; minutes: number }[] {

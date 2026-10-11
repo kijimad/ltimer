@@ -5,6 +5,7 @@ org-mode のタスク CLOCK エントリからリードタイムを可視化す�
 ## 構成
 
 - `frontend/` - Vite + React + TypeScript の SPA ダッシュボード (Recharts)
-- `scripts/parse_workflow.py` - org ファイルからタスクデータを JSON に変換
-- `scripts/parse_draft.py` - draft タグのリードタイムを JSON に変換
-- `scripts/parse_activities.py` - workflow.org から日次習慣データを JSON に変換
+- `frontend/scripts/build-db.ts` - org ファイルから SQLite の DB (`frontend/public/ltimer.db`) を作る (`make data`)
+- `frontend/src/db/` - DB のスキーマ (`schema.sql`) と、ブラウザで sql.js から問い合わせる集計
+
+DB は手元でも `sqlite3 frontend/public/ltimer.db` で問い合わせられる。時点は UTC で保存している。

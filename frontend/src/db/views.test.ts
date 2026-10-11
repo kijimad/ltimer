@@ -1,16 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { normalizeWorkflow, normalizeActivity } from "./normalize.ts";
-import type { RawTask } from "./types/index.ts";
+import { tasksInRange, dailyWorkInRange } from "./charts.ts";
+import { rows } from "./database.ts";
+import { createTestDatabase } from "../test/db.ts";
+import type { RawTask } from "../types/index.ts";
 
 // テストは TZ=Asia/Tokyo で実行する (vite.config.ts の test.env)
+const ALL = "2000-01-01";
 
 function rawTask(overrides: Partial<RawTask>): RawTask {
   return { title: "t", file: "f.org", status: "DONE", closed_at: null, clocks: [], ...overrides };
 }
 
-describe("normalizeWorkflow", () => {
-  const data = normalizeWorkflow({
-    generated_at: "2024-03-01T03:00:00Z",
+describe("views over tasks", () => {
+  const db = createTestDatabase({
+    generatedAt: "2024-03-01T03:00:00Z",
     tasks: [
       rawTask({
         title: "a",
@@ -27,7 +30,8 @@ describe("normalizeWorkflow", () => {
       }),
     ],
   });
-  const a = data.tasks.find((t) => t.title === "a")!;
+  const tasks = tasksInRange(db, ALL);
+  const a = tasks.find((t) => t.title === "a")!;
 
   it("converts UTC instants to local wall-clock time", () => {
     expect(a.first_clock_in).toBe("2024-02-01 23:30");
@@ -52,11 +56,11 @@ describe("normalizeWorkflow", () => {
   });
 
   it("sorts tasks by lead time descending", () => {
-    expect(data.tasks.map((t) => t.title)).toEqual(["b", "a"]);
+    expect(tasks.map((t) => t.title)).toEqual(["b", "a"]);
   });
 
   it("buckets daily work by local date of clock start", () => {
-    expect(data.daily_work).toEqual([
+    expect(dailyWorkInRange(db, ALL)).toEqual([
       { date: "2024-01-01", tasks: [{ title: "b", minutes: 25 }] },
       { date: "2024-02-01", tasks: [{ title: "a", minutes: 60 }] },
       { date: "2024-02-02", tasks: [{ title: "a", minutes: 30 }] },
@@ -64,10 +68,10 @@ describe("normalizeWorkflow", () => {
   });
 });
 
-describe("normalizeActivity", () => {
+describe("views over activities", () => {
   it("buckets activity minutes by local date", () => {
-    const data = normalizeActivity({
-      generated_at: "2024-03-01T03:00:00Z",
+    const db = createTestDatabase({
+      generatedAt: "2024-03-01T03:00:00Z",
       activities: [
         { title: "x", clocks: [
           // JST 2024-02-02 00:10 なので UTC では前日だがローカルでは 02-02
@@ -77,8 +81,9 @@ describe("normalizeActivity", () => {
         { title: "w", clocks: [{ start: "2024-02-02T04:00:00Z", end: "2024-02-02T04:05:00Z", minutes: 5 }] },
       ],
     });
-    expect(data.daily).toEqual([
-      { date: "2024-02-02", activities: [{ title: "w", minutes: 5 }, { title: "x", minutes: 35 }] },
+    expect(rows(db, "SELECT date, title, minutes FROM activity_daily ORDER BY date, title")).toEqual([
+      { date: "2024-02-02", title: "w", minutes: 5 },
+      { date: "2024-02-02", title: "x", minutes: 35 },
     ]);
   });
 });

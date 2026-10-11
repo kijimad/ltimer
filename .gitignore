@@ -1,10 +1,4 @@
-__pycache__/
-*.pyc
-
 # Frontend
 frontend/node_modules/
 frontend/dist/
-frontend/public/workflow-data.json
-frontend/public/draft-data.json
-frontend/public/activity-data.json
 frontend/public/ltimer.db

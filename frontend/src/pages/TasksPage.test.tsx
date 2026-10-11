@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TasksPage } from "./TasksPage.tsx";
-import { RAW_WORKFLOW_DATA } from "../test/fixtures.ts";
+import { TASKS_DB } from "../test/fixtures.ts";
 import { createTestDatabase } from "../test/db.ts";
 import { renderWithRouter } from "../test/render.tsx";
 
-const database = { db: createTestDatabase({ generatedAt: RAW_WORKFLOW_DATA.generated_at, tasks: RAW_WORKFLOW_DATA.tasks }), error: null };
+const database = { db: createTestDatabase(TASKS_DB), error: null };
 
 describe("TasksPage", () => {
   it("renders dashboard title after data loads", async () => {
