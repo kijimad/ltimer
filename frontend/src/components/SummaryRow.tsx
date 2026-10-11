@@ -22,7 +22,7 @@ export function SummaryRow({ summary }: { summary: Summary }) {
         )}
       </SimpleGrid>
       <Text fontSize="xs" color="gray.400" mt={1}>
-        集計: 選択中の範囲 / 目盛り: 同じ長さの過去の期間 (最大{HISTORY_PERIODS}) の分布 (両端 p10〜p90 / 黄帯 p25〜p75)
+        ゲージは右へ振れるほど良い / 集計: 選択中の範囲 / 目盛り: 同じ長さの過去の期間 (最大{HISTORY_PERIODS}) の分布 (両端 p10〜p90 / 黄帯 p25〜p75)
       </Text>
     </Box>
   );

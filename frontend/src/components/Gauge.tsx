@@ -35,11 +35,18 @@ function format(v: number): string {
 export function Gauge({ metric }: { metric: GaugeMetric }) {
   const { label, desc, unit, value, history, higherIsBetter, target } = metric;
   const scale = scaleFrom(history, target);
-  const frac = (v: number) => (scale ? Math.min(1, Math.max(0, (v - scale.min) / (scale.max - scale.min))) : 0);
+  // 低いほど良い指標は左右を反転し、どのゲージも右へ振れるほど良い向きにそろえる
+  const pos = (v: number) => {
+    const f = scale ? Math.min(1, Math.max(0, (v - scale.min) / (scale.max - scale.min))) : 0;
+    return higherIsBetter ? f : 1 - f;
+  };
   const band = scale && value !== null ? bandOf(value, scale) : null;
-  const [nx, ny] = point(frac(value ?? 0), R - 18);
-  const [tx0, ty0] = point(frac(target ?? 0), R - 11);
-  const [tx1, ty1] = point(frac(target ?? 0), R + 11);
+  const [nx, ny] = point(pos(value ?? 0), R - 18);
+  const [tx0, ty0] = point(pos(target ?? 0), R - 11);
+  const [tx1, ty1] = point(pos(target ?? 0), R + 11);
+  const badEdge = scale ? pos(higherIsBetter ? scale.lo : scale.hi) : 0;
+  const goodEdge = scale ? pos(higherIsBetter ? scale.hi : scale.lo) : 0;
+  const [leftLabel, rightLabel] = scale ? (higherIsBetter ? [scale.min, scale.max] : [scale.max, scale.min]) : [0, 0];
 
   return (
     <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={3} textAlign="center">
@@ -48,11 +55,11 @@ export function Gauge({ metric }: { metric: GaugeMetric }) {
       <svg viewBox="0 0 200 112" style={{ width: "100%", maxHeight: 110 }} role="img" aria-label={label}>
         {scale ? (
           <>
-            <path d={arcPath(0, frac(scale.lo))} stroke={bandColor("low", higherIsBetter)} strokeWidth={14} fill="none" opacity={0.35} />
-            <path d={arcPath(frac(scale.lo), frac(scale.hi))} stroke={NORMAL} strokeWidth={14} fill="none" opacity={0.35} />
-            <path d={arcPath(frac(scale.hi), 1)} stroke={bandColor("high", higherIsBetter)} strokeWidth={14} fill="none" opacity={0.35} />
-            <text x={CX - R} y={CY + 12} fontSize={11} fill={AXIS_STROKE} textAnchor="middle">{format(scale.min)}</text>
-            <text x={CX + R} y={CY + 12} fontSize={11} fill={AXIS_STROKE} textAnchor="middle">{format(scale.max)}</text>
+            <path d={arcPath(0, badEdge)} stroke={BAD} strokeWidth={14} fill="none" opacity={0.35} />
+            <path d={arcPath(badEdge, goodEdge)} stroke={NORMAL} strokeWidth={14} fill="none" opacity={0.35} />
+            <path d={arcPath(goodEdge, 1)} stroke={GOOD} strokeWidth={14} fill="none" opacity={0.35} />
+            <text x={CX - R} y={CY + 12} fontSize={11} fill={AXIS_STROKE} textAnchor="middle">{format(leftLabel)}</text>
+            <text x={CX + R} y={CY + 12} fontSize={11} fill={AXIS_STROKE} textAnchor="middle">{format(rightLabel)}</text>
           </>
         ) : (
           <path d={arcPath(0, 1)} stroke={GRID_STROKE} strokeWidth={14} fill="none" />
