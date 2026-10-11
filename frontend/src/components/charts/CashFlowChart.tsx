@@ -41,14 +41,15 @@ export function CashFlowChart({ tasks, unit, startedAt }: Props) {
     const sorted = Array.from(periods).sort();
     let cumulative = 0;
 
-    return sorted.reduce<{ period: string; CashFlow: number }[]>((acc, p) => {
+    const result: { period: string; CashFlow: number }[] = [];
+    for (const p of sorted) {
       const net = (completed[p] || 0) - (started[p] || 0);
       cumulative += net;
       if (p >= startedAtPeriod) {
-        acc.push({ period: p, CashFlow: cumulative });
+        result.push({ period: p, CashFlow: cumulative });
       }
-      return acc;
-    }, []);
+    }
+    return result;
   }, [tasks, unit, startedAt]);
 
   return (

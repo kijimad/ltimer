@@ -19,6 +19,13 @@ describe("TimeRangeSwitch", () => {
     expect(screen.getByText("前月").closest("button")).toBeInTheDocument();
   });
 
+  it("shows the selected date range", () => {
+    renderWithChakra(
+      <TimeRangeSwitch range="3m" onChange={() => {}} startedAt="2026-07-10" finishedAt="2026-10-11" />
+    );
+    expect(screen.getByText("2026-07-10 ~ 2026-10-11")).toBeInTheDocument();
+  });
+
   it("calls onChange when clicking a button", async () => {
     const onChange = vi.fn();
     renderWithChakra(<TimeRangeSwitch range="3m" onChange={onChange} />);

@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { Box, Text } from "@chakra-ui/react";
 import type { ActivityDailyEntry } from "../../types/index.ts";
+import { daysBetween } from "../../dates.ts";
 
 interface Props {
   daily: ActivityDailyEntry[];
+  asOf: string;
 }
 
-function calcStreak(title: string, daily: ActivityDailyEntry[]): { current: number; max: number } {
+function calcStreak(title: string, daily: ActivityDailyEntry[], asOf: string): { current: number; max: number } {
   const activeDates = new Set<string>();
   for (const d of daily) {
     if (d.activities.some((a) => a.title === title)) {
@@ -31,16 +33,13 @@ function calcStreak(title: string, daily: ActivityDailyEntry[]): { current: numb
     }
   }
 
-  const lastDate = new Date(sorted[sorted.length - 1]);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const daysSinceLast = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysSinceLast = daysBetween(sorted[sorted.length - 1], asOf);
   const currentStreak = daysSinceLast <= 1 ? cur : 0;
 
   return { current: currentStreak, max };
 }
 
-export function StreakTable({ daily }: Props) {
+export function StreakTable({ daily, asOf }: Props) {
   const streaks = useMemo(() => {
     // Collect all activity titles from daily data
     const titleSet = new Set<string>();
@@ -51,14 +50,14 @@ export function StreakTable({ daily }: Props) {
     const totalDays = new Set(daily.map((d) => d.date)).size;
 
     return Array.from(titleSet).map((title) => {
-      const { current, max } = calcStreak(title, daily);
+      const { current, max } = calcStreak(title, daily, asOf);
       const recentDays = new Set(
         daily.filter((d) => d.activities.some((a) => a.title === title)).map((d) => d.date),
       ).size;
       const rate = totalDays > 0 ? Math.round((recentDays / totalDays) * 100) : 0;
       return { title, current, max, recentDays, rate };
     }).sort((a, b) => b.rate - a.rate);
-  }, [daily]);
+  }, [daily, asOf]);
 
   if (streaks.length === 0) return <Text color="gray.500">No data</Text>;
 

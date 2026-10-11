@@ -13,7 +13,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 FILETAGS_RE = re.compile(r"^#\+filetags:\s*(.+)", re.IGNORECASE)
 TITLE_RE = re.compile(r"^#\+title:\s*(.+)", re.IGNORECASE)
@@ -128,7 +128,7 @@ def main():
     output = sys.argv[2] if len(sys.argv) > 2 else "frontend/public/draft-data.json"
     entries = parse_all(roam_dir)
     data = {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "entries": sorted(entries, key=lambda x: -(x["lead_time_days"] or 0)),
     }
     with open(output, "w", encoding="utf-8") as f:

@@ -72,6 +72,13 @@ CLOCK: [2025-01-12 Sun 09:00]--[2025-01-12 Sun 09:50]  (50min)`}</Pre>
         </Box>
       </Section>
 
+      <Section title="タイムゾーン">
+        <Box as="ul" pl={5} fontSize="sm" color="gray.600">
+          <Box as="li">org の CLOCK / CLOSED はタイムゾーンを持たないので、パース時に JST と断定して UTC に変換し JSON に保存する</Box>
+          <Box as="li">表示時に閲覧者のタイムゾーンへ変換してから、日付・曜日・時間帯に振り分ける</Box>
+        </Box>
+      </Section>
+
       <Section title="Exclusions">
         <Box as="ul" pl={5} fontSize="sm" color="gray.600">
           <Box as="li"><Code>workflow.org</Code> のタスク (日次習慣。Activity ページで別途集計)</Box>
@@ -82,9 +89,10 @@ CLOCK: [2025-01-12 Sun 09:00]--[2025-01-12 Sun 09:50]  (50min)`}</Pre>
       <Section title="集計範囲フィルタ">
         <Text mb={3} fontSize="sm" color="gray.600">
           集計範囲は started_at ~ finished_at の日付範囲として定義される。
-          プリセット (前週/前月/3ヶ月/半年) は started_at を過去に設定し、finished_at を今日にする。
+          プリセット (前週/前月/3ヶ月/半年) は started_at を過去に設定し、finished_at をデータ生成日 (UTC の generated_at を閲覧者のタイムゾーンに変換した日付) にする。
+          閲覧した日ではなく生成日を基準にするので、古いデータを見ても範囲の末尾が空にならない。
         </Text>
-        <Pre>{`{ started_at, finished_at } = rangeDates(range)
+        <Pre>{`{ started_at, finished_at } = rangeDates(range, as_of)
 例: 3ヶ月 → { started_at: "2026-02-10", finished_at: "2026-05-10" }
 
 タスクの絞り込み (Tasks ページ):

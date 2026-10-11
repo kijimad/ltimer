@@ -47,15 +47,16 @@ export function CfdChart({ tasks, unit, startedAt }: Props) {
     let cumCompleted = 0;
     let cumClosed = 0;
 
-    return sorted.reduce<{ period: string; Started: number; Completed: number; Closed: number }[]>((acc, p) => {
+    const result: { period: string; Started: number; Completed: number; Closed: number }[] = [];
+    for (const p of sorted) {
       cumStarted += startedByPeriod[p] || 0;
       cumCompleted += completedByPeriod[p] || 0;
       cumClosed += closedByPeriod[p] || 0;
       if (p >= startedAtPeriod) {
-        acc.push({ period: p, Started: cumStarted, Completed: cumCompleted, Closed: cumClosed });
+        result.push({ period: p, Started: cumStarted, Completed: cumCompleted, Closed: cumClosed });
       }
-      return acc;
-    }, []);
+    }
+    return result;
   }, [tasks, unit, startedAt]);
 
   return (

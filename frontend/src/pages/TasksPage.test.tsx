@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { TasksPage } from "./TasksPage.tsx";
-import { WORKFLOW_DATA } from "../test/fixtures.ts";
+import { RAW_WORKFLOW_DATA } from "../test/fixtures.ts";
 import { renderWithRouter } from "../test/render.tsx";
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockResolvedValue({
-    json: () => Promise.resolve(WORKFLOW_DATA),
+    json: () => Promise.resolve(RAW_WORKFLOW_DATA),
   } as Response);
 });
 
@@ -21,7 +21,14 @@ describe("TasksPage", () => {
   it("shows generated date", async () => {
     renderWithRouter(<TasksPage />);
     await waitFor(() => {
-      expect(screen.getByText(/2024-03-01/)).toBeInTheDocument();
+      expect(screen.getByText(/Generated: 2024-03-01/)).toBeInTheDocument();
+    });
+  });
+
+  it("ends the range at the generated date, not the viewing date", async () => {
+    renderWithRouter(<TasksPage />);
+    await waitFor(() => {
+      expect(screen.getByText("2023-12-01 ~ 2024-03-01")).toBeInTheDocument();
     });
   });
 
@@ -43,6 +50,13 @@ describe("TasksPage", () => {
     renderWithRouter(<TasksPage />);
     await waitFor(() => {
       expect(screen.getByText(/Network error/)).toBeInTheDocument();
+    });
+  });
+
+  it("renders summary gauges", async () => {
+    renderWithRouter(<TasksPage />);
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "スループット" })).toBeInTheDocument();
     });
   });
 });

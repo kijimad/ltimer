@@ -9,6 +9,9 @@ import {
 } from "@chakra-ui/react";
 import { useTimeRange, rangeDates } from "../hooks/useTimeRange.ts";
 import { TimeRangeSwitch } from "../components/TimeRangeSwitch.tsx";
+import { SummaryRow } from "../components/SummaryRow.tsx";
+import { asOfDate, daysBetween, formatGeneratedAt } from "../dates.ts";
+import { draftSummary } from "../metrics.ts";
 
 export function DraftPage() {
   const { data, error } = useDraftData();
@@ -25,15 +28,17 @@ export function DraftPage() {
     }
   };
 
-  const startedAt = useMemo(() => rangeDates(range).startedAt.toISOString().slice(0, 10), [range]);
+  const asOf = data ? asOfDate(data.generated_at) : null;
+  const dates = useMemo(() => (asOf ? rangeDates(range, asOf) : null), [range, asOf]);
 
   const filtered = useMemo(() => {
-    if (!data) return null;
+    if (!data || !dates) return null;
+    const { startedAt } = dates;
     const entries = data.entries.filter(
       (e) => e.created >= startedAt || (e.published && e.published >= startedAt)
     );
     return entries;
-  }, [data, startedAt]);
+  }, [data, dates]);
 
   const sorted = useMemo(() => {
     if (!filtered) return [];
@@ -48,8 +53,12 @@ export function DraftPage() {
     });
   }, [filtered, sortKey, sortDir]);
 
+  const summary = useMemo(() => (data && asOf ? draftSummary(data.entries, asOf) : null), [data, asOf]);
+
   if (error) return <Box p={5}>Error: {error}</Box>;
-  if (!data || !filtered) return <Box p={5}>Loading...</Box>;
+  if (!data || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
+
+  const { startedAt, finishedAt } = dates;
 
   const published = filtered.filter((e) => e.status === "published" && e.lead_time_days != null);
   const drafts = filtered.filter((e) => e.status === "draft");
@@ -65,12 +74,12 @@ export function DraftPage() {
     title: e.title,
     days: e.status === "published"
       ? (e.lead_time_days ?? 0)
-      : Math.floor((Date.now() - new Date(e.created).getTime()) / (1000 * 60 * 60 * 24)),
+      : daysBetween(e.created, asOf),
     status: e.status,
   }));
 
   const draftAging = drafts.map((e) => {
-    const days = Math.floor((Date.now() - new Date(e.created).getTime()) / (1000 * 60 * 60 * 24));
+    const days = daysBetween(e.created, asOf);
     return { name: e.title.slice(0, 30), days, file: e.file };
   }).sort((a, b) => b.days - a.days);
 
@@ -78,9 +87,10 @@ export function DraftPage() {
     <Box p={5}>
       <Heading size="lg" color="blue.600" mb={1}>Draft Lead Time</Heading>
       <Text fontSize="xs" color="gray.400" mb={5}>
-        Generated: {data.generated_at.slice(0, 16)} | {startedAt} ~
+        Generated: {formatGeneratedAt(data.generated_at)}
       </Text>
-      <TimeRangeSwitch range={range} onChange={setRange} />
+      <SummaryRow summary={summary} />
+      <TimeRangeSwitch range={range} onChange={setRange} startedAt={startedAt} finishedAt={finishedAt} />
 
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={5} mb={5}>
         {barData.length > 0 && (

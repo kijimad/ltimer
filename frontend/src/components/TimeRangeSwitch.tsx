@@ -11,9 +11,13 @@ const OPTIONS: { value: TimeRange; label: string }[] = [
 export function TimeRangeSwitch({
   range,
   onChange,
+  startedAt,
+  finishedAt,
 }: {
   range: TimeRange;
   onChange: (r: TimeRange) => void;
+  startedAt?: string;
+  finishedAt?: string;
 }) {
   return (
     <HStack gap={3} mb={4}>
@@ -29,6 +33,11 @@ export function TimeRangeSwitch({
           {o.label}
         </Button>
       ))}
+      {startedAt && (
+        <Text fontSize="xs" color="gray.500">
+          {startedAt} ~ {finishedAt}
+        </Text>
+      )}
     </HStack>
   );
 }

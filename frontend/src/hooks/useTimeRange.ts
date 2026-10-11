@@ -1,29 +1,20 @@
 import { useState } from "react";
 import type { TimeRange, TimeUnit } from "../types/index.ts";
+import { addDays, addMonths } from "../dates.ts";
 
 export function useTimeRange() {
   const [range, setRange] = useState<TimeRange>("3m");
   return { range, setRange };
 }
 
-export function rangeDates(range: TimeRange): { startedAt: Date; finishedAt: Date } {
-  const now = new Date();
-  let startedAt: Date;
-  switch (range) {
-    case "1w":
-      startedAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-      break;
-    case "1m":
-      startedAt = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-      break;
-    case "3m":
-      startedAt = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-      break;
-    case "6m":
-      startedAt = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
-      break;
-  }
-  return { startedAt, finishedAt: now };
+export function rangeDates(range: TimeRange, asOf: string): { startedAt: string; finishedAt: string } {
+  const startedAt = {
+    "1w": () => addDays(asOf, -7),
+    "1m": () => addMonths(asOf, -1),
+    "3m": () => addMonths(asOf, -3),
+    "6m": () => addMonths(asOf, -6),
+  }[range]();
+  return { startedAt, finishedAt: asOf };
 }
 
 export function unitForRange(range: TimeRange): TimeUnit {

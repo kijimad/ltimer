@@ -39,14 +39,15 @@ export function BurnChart({ tasks, startedAt }: Props) {
     let cumStarted = 0;
     let cumCompleted = 0;
 
-    return sorted.reduce<{ date: string; Started: number; Completed: number; WIP: number }[]>((acc, date) => {
+    const result: { date: string; Started: number; Completed: number; WIP: number }[] = [];
+    for (const date of sorted) {
       cumStarted += startDates[date] || 0;
       cumCompleted += completeDates[date] || 0;
       if (date >= startedAt) {
-        acc.push({ date, Started: cumStarted, Completed: cumCompleted, WIP: cumStarted - cumCompleted });
+        result.push({ date, Started: cumStarted, Completed: cumCompleted, WIP: cumStarted - cumCompleted });
       }
-      return acc;
-    }, []);
+    }
+    return result;
   }, [tasks, startedAt]);
 
   return (

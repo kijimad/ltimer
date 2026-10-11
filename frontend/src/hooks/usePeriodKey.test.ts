@@ -17,9 +17,15 @@ describe("periodKey", () => {
     expect(periodKey("2024-01-08", "week")).toBe("2024-01-08");
   });
 
+  it("keeps early-morning Monday in the same week", () => {
+    expect(periodKey("2024-01-08 00:30", "week")).toBe("2024-01-08");
+    expect(periodKey("2024-01-14 23:59", "week")).toBe("2024-01-08");
+  });
+
   it("returns YYYY-MM for month unit", () => {
     expect(periodKey("2024-01-15", "month")).toBe("2024-01");
     expect(periodKey("2024-12-01", "month")).toBe("2024-12");
+    expect(periodKey("2024-02-01 00:10", "month")).toBe("2024-02");
   });
 });
 

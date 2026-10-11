@@ -37,5 +37,7 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // 日付の変換結果を実行環境のタイムゾーンに依存させない
+    env: { TZ: "Asia/Tokyo" },
   },
 });

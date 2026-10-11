@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { DraftPage } from "./DraftPage.tsx";
 import { DRAFT_DATA } from "../test/fixtures.ts";
 import { renderWithRouter } from "../test/render.tsx";
@@ -37,7 +37,15 @@ describe("DraftPage", () => {
   it("shows lead time for published entries", async () => {
     renderWithRouter(<DraftPage />);
     await waitFor(() => {
-      expect(screen.getByText("45")).toBeInTheDocument();
+      // サマリのゲージにも同じ値が出るので一覧表に絞る
+      expect(within(screen.getByRole("table")).getByText("45")).toBeInTheDocument();
+    });
+  });
+
+  it("renders summary gauges", async () => {
+    renderWithRouter(<DraftPage />);
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "未公開 Draft" })).toBeInTheDocument();
     });
   });
 });

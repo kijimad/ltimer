@@ -1,19 +1,20 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Task } from "../../types/index.ts";
+import { daysBetween } from "../../dates.ts";
 import { AGING_THRESHOLD_DAYS, GRID_STROKE, AXIS_STROKE, TOOLTIP_DIV_STYLE } from "./colors.ts";
 
 interface Props {
   tasks: Task[];
+  asOf: string;
 }
 
-export function AgingWip({ tasks }: Props) {
+export function AgingWip({ tasks, asOf }: Props) {
   const data = useMemo(() => {
-    const now = Date.now();
     return tasks
       .filter((t) => t.status === "TODO")
       .map((t) => {
-        const days = Math.round((now - new Date(t.first_clock_in).getTime()) / (1000 * 60 * 60 * 24));
+        const days = daysBetween(t.first_clock_in.slice(0, 10), asOf);
         return {
           title: t.title.slice(0, 25),
           days,
@@ -21,7 +22,7 @@ export function AgingWip({ tasks }: Props) {
         };
       })
       .sort((a, b) => b.days - a.days);
-  }, [tasks]);
+  }, [tasks, asOf]);
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(200, data.length * 28)}>

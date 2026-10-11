@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { WorkflowData } from "../types/index.ts";
+import type { WorkflowData, RawWorkflowData } from "../types/index.ts";
+import { normalizeWorkflow } from "../normalize.ts";
 
 export function useWorkflowData() {
   const [data, setData] = useState<WorkflowData | null>(null);
@@ -8,7 +9,7 @@ export function useWorkflowData() {
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}workflow-data.json`)
       .then((r) => r.json())
-      .then(setData)
+      .then((raw: RawWorkflowData) => setData(normalizeWorkflow(raw)))
       .catch((e) => setError(e.message));
   }, []);
 

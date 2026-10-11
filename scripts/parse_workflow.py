@@ -6,8 +6,7 @@ import json
 import os
 import re
 import sys
-from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 CLOCK_RE = re.compile(
     r"CLOCK: \[(\d{4}-\d{2}-\d{2}) \w+ (\d{2}:\d{2})\]--\[(\d{4}-\d{2}-\d{2}) \w+ (\d{2}:\d{2})\]\s+=>\s+(\d+):(\d{2})"
@@ -17,6 +16,14 @@ CLOSED_RE = re.compile(r"CLOSED:\s+\[(\d{4}-\d{2}-\d{2}) \w+ (\d{2}:\d{2})\]")
 
 SKIP_FILES = {"20210904124352-workflow.org"}
 MIN_CLOCK_MINUTES = 25
+
+# org のタイムスタンプはタイムゾーンを持たないので JST とみなす
+JST = timezone(timedelta(hours=9), "JST")
+
+
+def to_utc(date, time):
+    local = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M").replace(tzinfo=JST)
+    return local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def parse_org_file(filepath):
@@ -50,15 +57,11 @@ def parse_org_file(filepath):
             if current_task:
                 closed_m = CLOSED_RE.search(line)
                 if closed_m:
-                    current_task["closed_at"] = f"{closed_m.group(1)} {closed_m.group(2)}"
+                    current_task["closed_at"] = to_utc(closed_m.group(1), closed_m.group(2))
                     continue
 
                 clock_m = CLOCK_RE.search(line)
                 if clock_m:
-                    clock_in_date = clock_m.group(1)
-                    clock_in_time = clock_m.group(2)
-                    clock_out_date = clock_m.group(3)
-                    clock_out_time = clock_m.group(4)
                     hours = int(clock_m.group(5))
                     minutes = int(clock_m.group(6))
                     total = hours * 60 + minutes
@@ -66,8 +69,8 @@ def parse_org_file(filepath):
                         continue
                     current_task["clocks"].append(
                         {
-                            "clock_in": f"{clock_in_date} {clock_in_time}",
-                            "clock_out": f"{clock_out_date} {clock_out_time}",
+                            "start": to_utc(clock_m.group(1), clock_m.group(2)),
+                            "end": to_utc(clock_m.group(3), clock_m.group(4)),
                             "minutes": total,
                         }
                     )
@@ -83,57 +86,19 @@ def parse_all(roam_dir):
 
 
 def aggregate(tasks):
-    now = datetime.now()
-
-    results = []
-    for t in tasks:
-        first_clock_in = min(c["clock_in"] for c in t["clocks"])
-        last_clock_out = max(c["clock_out"] for c in t["clocks"])
-
-        first_date = datetime.strptime(first_clock_in[:10], "%Y-%m-%d")
-        last_date = datetime.strptime(last_clock_out[:10], "%Y-%m-%d")
-        lead_time_days = (last_date - first_date).days
-
-        total_minutes = sum(c["minutes"] for c in t["clocks"])
-
-        results.append(
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {
+        "generated_at": generated_at,
+        "tasks": [
             {
                 "title": t["title"],
                 "file": t["file"],
                 "status": t["status"],
-                "first_clock_in": first_clock_in,
-                "last_clock_out": last_clock_out,
-                "closed_at": t.get("closed_at"),
-                "lead_time_days": lead_time_days,
-                "total_minutes": total_minutes,
-                "clock_count": len(t["clocks"]),
+                "closed_at": t["closed_at"],
+                "clocks": t["clocks"],
             }
-        )
-
-    # Heatmap: aggregate minutes by day-of-week x hour
-    heatmap = [[0] * 24 for _ in range(7)]
-    # Daily work: {date: {task_title: minutes}}
-    daily_work = defaultdict(lambda: defaultdict(int))
-    for t in tasks:
-        for c in t["clocks"]:
-            dt = datetime.strptime(c["clock_in"], "%Y-%m-%d %H:%M")
-            heatmap[dt.weekday()][dt.hour] += c["minutes"]
-            daily_work[c["clock_in"][:10]][t["title"]] += c["minutes"]
-
-    # Convert to sorted list: [{date, tasks: [{title, minutes}]}]
-    daily_work_list = []
-    for date in sorted(daily_work):
-        tasks_on_day = [
-            {"title": title, "minutes": mins}
-            for title, mins in sorted(daily_work[date].items())
-        ]
-        daily_work_list.append({"date": date, "tasks": tasks_on_day})
-
-    return {
-        "generated_at": now.isoformat(),
-        "tasks": sorted(results, key=lambda x: -x["lead_time_days"]),
-        "heatmap": heatmap,
-        "daily_work": daily_work_list,
+            for t in tasks
+        ],
     }
 
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { ActivityData } from "../types/index.ts";
+import type { ActivityData, RawActivityData } from "../types/index.ts";
+import { normalizeActivity } from "../normalize.ts";
 
 export function useActivityData() {
   const [data, setData] = useState<ActivityData | null>(null);
@@ -8,7 +9,7 @@ export function useActivityData() {
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}activity-data.json`)
       .then((r) => r.json())
-      .then(setData)
+      .then((raw: RawActivityData) => setData(normalizeActivity(raw)))
       .catch((e) => setError(e.message));
   }, []);
 

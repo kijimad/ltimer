@@ -1,16 +1,13 @@
 import type { TimeUnit } from "../types/index.ts";
+import { addDays } from "../dates.ts";
 
+/** Date の文字列解釈と toISOString はタイムゾーンで日付がずれるので、先頭10文字を暦日として扱う */
 export function periodKey(dateStr: string, unit: TimeUnit): string {
-  const d = new Date(dateStr);
-  if (unit === "month") {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }
+  const date = dateStr.slice(0, 10);
+  if (unit === "month") return date.slice(0, 7);
   // week: ISO week Monday
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d);
-  monday.setDate(diff);
-  return monday.toISOString().slice(0, 10);
+  const day = new Date(`${date}T00:00:00`).getDay();
+  return addDays(date, day === 0 ? -6 : 1 - day);
 }
 
 export function completedDate(

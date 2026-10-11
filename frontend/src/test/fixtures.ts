@@ -1,4 +1,4 @@
-import type { Task, DailyWorkEntry, WorkflowData, DraftEntry, DraftData } from "../types/index.ts";
+import type { Task, DraftEntry, DraftData, RawWorkflowData } from "../types/index.ts";
 
 export const TASKS: Task[] = [
   {
@@ -47,25 +47,27 @@ export const TASKS: Task[] = [
   },
 ];
 
-export const DAILY_WORK: DailyWorkEntry[] = [
-  {
-    date: "2024-01-10",
-    tasks: [
-      { title: "Implement auth", minutes: 60 },
-      { title: "Write docs", minutes: 30 },
-    ],
-  },
-  {
-    date: "2024-01-11",
-    tasks: [{ title: "Implement auth", minutes: 90 }],
-  },
-];
-
-export const WORKFLOW_DATA: WorkflowData = {
-  generated_at: "2024-03-01T12:00:00",
-  tasks: TASKS,
-  heatmap: Array.from({ length: 7 }, () => Array(24).fill(0)),
-  daily_work: DAILY_WORK,
+export const RAW_WORKFLOW_DATA: RawWorkflowData = {
+  generated_at: "2024-03-01T03:00:00Z",
+  tasks: [
+    {
+      title: "Implement auth",
+      file: "20240101T120000--project__web.org",
+      status: "DONE",
+      closed_at: "2024-02-20T08:00:00Z",
+      clocks: [
+        { start: "2024-02-10T00:00:00Z", end: "2024-02-10T01:00:00Z", minutes: 60 },
+        { start: "2024-02-20T07:00:00Z", end: "2024-02-20T08:00:00Z", minutes: 60 },
+      ],
+    },
+    {
+      title: "Fix bug #42",
+      file: "20240101T120000--project__web.org",
+      status: "TODO",
+      closed_at: null,
+      clocks: [{ start: "2024-02-25T01:00:00Z", end: "2024-02-25T02:00:00Z", minutes: 60 }],
+    },
+  ],
 };
 
 export const DRAFT_ENTRIES: DraftEntry[] = [
@@ -88,6 +90,6 @@ export const DRAFT_ENTRIES: DraftEntry[] = [
 ];
 
 export const DRAFT_DATA: DraftData = {
-  generated_at: "2024-03-01T12:00:00",
+  generated_at: "2026-03-20T03:00:00Z",
   entries: DRAFT_ENTRIES,
 };

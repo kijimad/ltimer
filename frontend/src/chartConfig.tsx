@@ -28,6 +28,8 @@ export interface ChartProps {
   dailyWork: DailyWorkEntry[];
   unit: TimeUnit;
   startedAt: string;
+  /** データの基準日。generated_at の閲覧者タイムゾーンでの日付 */
+  asOf: string;
 }
 
 interface ChartEntry {
@@ -119,7 +121,7 @@ export const CHART_GROUPS: ChartGroup[] = [
         key: "aging-wip",
         title: "Aging WIP",
         desc: "現在TODOのタスクが最初のクロックインから何日経過しているか。30日超は赤色で警告",
-        render: ({ tasks }) => <AgingWip tasks={tasks} />,
+        render: ({ tasks, asOf }) => <AgingWip tasks={tasks} asOf={asOf} />,
       },
       {
         key: "littles-law",

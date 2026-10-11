@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 CLOCK_RE = re.compile(
     r"CLOCK: \[(\d{4}-\d{2}-\d{2}) \w+ (\d{2}:\d{2})\]--\[(\d{4}-\d{2}-\d{2}) \w+ (\d{2}:\d{2})\]\s+=>\s+(\d+):(\d{2})"
@@ -17,6 +17,14 @@ WORKFLOW_FILE = "20210904124352-workflow.org"
 
 # Normalize rotated activity names: "英語を読む 3" -> "英語を読む"
 ROTATION_SUFFIX_RE = re.compile(r"\s+\d+$")
+
+# org のタイムスタンプはタイムゾーンを持たないので JST とみなす
+JST = timezone(timedelta(hours=9), "JST")
+
+
+def to_utc(date, time):
+    local = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M").replace(tzinfo=JST)
+    return local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def normalize_title(title: str) -> str:
@@ -58,9 +66,8 @@ def parse_workflow(filepath):
                     total = hours * 60 + minutes
                     current["clocks"].append(
                         {
-                            "date": clock_m.group(1),
-                            "clock_in": f"{clock_m.group(1)} {clock_m.group(2)}",
-                            "clock_out": f"{clock_m.group(3)} {clock_m.group(4)}",
+                            "start": to_utc(clock_m.group(1), clock_m.group(2)),
+                            "end": to_utc(clock_m.group(3), clock_m.group(4)),
                             "minutes": total,
                         }
                     )
@@ -69,56 +76,23 @@ def parse_workflow(filepath):
 
 
 def aggregate(activities):
-    now = datetime.now()
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Group by normalized title, merge clocks
     grouped = defaultdict(list)
     for a in activities:
-        key = normalize_title(a["title"])
-        grouped[key].extend(a["clocks"])
-
-    # Build activity summaries
-    results = []
-    for title, clocks in sorted(grouped.items()):
-        total_minutes = sum(c["minutes"] for c in clocks)
-        dates = sorted(set(c["date"] for c in clocks))
-        results.append(
-            {
-                "title": title,
-                "total_minutes": total_minutes,
-                "session_count": len(clocks),
-                "active_days": len(dates),
-                "first_date": dates[0],
-                "last_date": dates[-1],
-            }
-        )
-
-    # Daily breakdown: [{date, activities: [{title, minutes}]}]
-    daily = defaultdict(lambda: defaultdict(int))
-    for a in activities:
-        key = normalize_title(a["title"])
-        for c in a["clocks"]:
-            daily[c["date"]][key] += c["minutes"]
-
-    daily_list = []
-    for date in sorted(daily):
-        acts = [
-            {"title": t, "minutes": m} for t, m in sorted(daily[date].items())
-        ]
-        daily_list.append({"date": date, "activities": acts})
+        grouped[normalize_title(a["title"])].extend(a["clocks"])
 
     # Skip non-habit tasks from Archives (one-off workflow tasks)
     skip_titles = {"タスク状況をレポート化する", "よく使うagenda viewを一発で開けるようにする", "チェックを忘れるとalertされなくなる"}
-    results = [r for r in results if r["title"] not in skip_titles]
-    # Also filter daily
-    for d in daily_list:
-        d["activities"] = [a for a in d["activities"] if a["title"] not in skip_titles]
-    daily_list = [d for d in daily_list if d["activities"]]
 
     return {
-        "generated_at": now.isoformat(),
-        "activities": sorted(results, key=lambda x: -x["total_minutes"]),
-        "daily": daily_list,
+        "generated_at": generated_at,
+        "activities": [
+            {"title": title, "clocks": clocks}
+            for title, clocks in sorted(grouped.items())
+            if title not in skip_titles
+        ],
     }
 
 
@@ -128,13 +102,14 @@ def main():
     filepath = os.path.join(roam_dir, WORKFLOW_FILE)
     if not os.path.exists(filepath):
         print(f"Warning: {filepath} not found, writing empty data")
-        data = {"generated_at": datetime.now().isoformat(), "activities": [], "daily": []}
+        data = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "activities": []}
     else:
         activities = parse_workflow(filepath)
         data = aggregate(activities)
     with open(output, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"Wrote {output} ({len(data['activities'])} activities, {len(data['daily'])} days)")
+    sessions = sum(len(a["clocks"]) for a in data["activities"])
+    print(f"Wrote {output} ({len(data['activities'])} activities, {sessions} sessions)")
 
 
 if __name__ == "__main__":

@@ -26,24 +26,13 @@ export interface DraftEntry {
 
 export interface WorkflowData {
   generated_at: string;
-  started_at?: string;
   tasks: Task[];
-  heatmap: number[][];
   daily_work: DailyWorkEntry[];
 }
 
 export interface DraftData {
   generated_at: string;
   entries: DraftEntry[];
-}
-
-export interface Activity {
-  title: string;
-  total_minutes: number;
-  session_count: number;
-  active_days: number;
-  first_date: string;
-  last_date: string;
 }
 
 export interface ActivityDailyEntry {
@@ -53,8 +42,33 @@ export interface ActivityDailyEntry {
 
 export interface ActivityData {
   generated_at: string;
-  activities: Activity[];
   daily: ActivityDailyEntry[];
+}
+
+// JSON の形式。時点は UTC
+
+export interface RawClock {
+  start: string;
+  end: string;
+  minutes: number;
+}
+
+export interface RawTask {
+  title: string;
+  file: string;
+  status: Task["status"];
+  closed_at: string | null;
+  clocks: RawClock[];
+}
+
+export interface RawWorkflowData {
+  generated_at: string;
+  tasks: RawTask[];
+}
+
+export interface RawActivityData {
+  generated_at: string;
+  activities: { title: string; clocks: RawClock[] }[];
 }
 
 export type TimeUnit = "week" | "month";
