@@ -3,26 +3,25 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { wipByPeriod } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function LittlesLaw({ db, startedAt, unit }: Props) {
+export function LittlesLaw({ repo, startedAt, unit }: Props) {
   const data = useMemo(
     () =>
-      wipByPeriod(db, startedAt, unit).map(({ period, wip, throughput, avgLead }) => ({
+      repo.wipByPeriod(startedAt, unit).map(({ period, wip, throughput, avgLead }) => ({
         period,
         "Actual LT": avgLead === null ? 0 : Math.round(avgLead * 10) / 10,
         "Predicted (WIP/T)": throughput > 0 ? Math.round((wip / throughput) * 10) / 10 : 0,
         WIP: wip,
       })),
-    [db, startedAt, unit],
+    [repo, startedAt, unit],
   );
 
   return (

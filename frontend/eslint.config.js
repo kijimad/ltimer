@@ -20,6 +20,16 @@ export default defineConfig([
     },
   },
   {
+    // UI はデータを data/repository.ts を通して取得し、保存の方式 (SQLite / sql.js) に直接依存しない
+    files: ['src/components/**', 'src/pages/**', 'src/data/**', 'src/hooks/**', 'src/*.{ts,tsx}'],
+    ignores: ['src/main.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{ group: ['sql.js', '**/db/*'], message: 'UI は data/repository.ts を通してデータを取得する' }],
+      }],
+    },
+  },
+  {
     // テストヘルパーは HMR の対象外なので Fast Refresh の制約は不要
     files: ['src/test/**/*.{ts,tsx}'],
     rules: {

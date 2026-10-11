@@ -5,6 +5,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import initSqlJs from "sql.js";
 import { parseTasks, parseActivities, parseDraft, parsePublishedFromGitLog, WORKFLOW_FILE } from "./org.ts";
+import { insert } from "../src/db/rows.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const [roamDir = ".", output = join(here, "..", "public", "ltimer.db")] = process.argv.slice(2);
@@ -34,18 +35,16 @@ const drafts = files.map((f) => parseDraft(f, texts.get(f)!, published)).filter(
 const SQL = await initSqlJs();
 const db = new SQL.Database();
 db.exec(readFileSync(join(here, "..", "src", "db", "schema.sql"), "utf8"));
-db.run("INSERT INTO meta VALUES ('generated_at', ?)", [new Date().toISOString().replace(/\.\d{3}Z$/, "Z")]);
+insert(db, "meta", { key: "generated_at", value: new Date().toISOString().replace(/\.\d{3}Z$/, "Z") });
 db.exec("BEGIN");
-tasks.forEach((t, i) => {
-  db.run("INSERT INTO tasks VALUES (?, ?, ?, ?, ?)", [i, t.title, t.file, t.status, t.closed_at]);
-  for (const c of t.clocks) db.run("INSERT INTO task_clocks VALUES (?, ?, ?, ?)", [i, c.start, c.end, c.minutes]);
+tasks.forEach(({ clocks, ...t }, id) => {
+  insert(db, "tasks", { id, ...t });
+  for (const c of clocks) insert(db, "task_clocks", { task_id: id, ...c });
 });
 for (const a of activities) {
-  for (const c of a.clocks) db.run("INSERT INTO activity_clocks VALUES (?, ?, ?, ?)", [a.title, c.start, c.end, c.minutes]);
+  for (const c of a.clocks) insert(db, "activity_clocks", { title: a.title, ...c });
 }
-for (const d of drafts) {
-  db.run("INSERT INTO drafts VALUES (?, ?, ?, ?, ?, ?)", [d.file, d.title, d.created, d.published, d.lead_time_days, d.status]);
-}
+for (const d of drafts) insert(db, "drafts", d);
 db.exec("COMMIT");
 writeFileSync(output, db.export());
 console.log(`Wrote ${output} (${tasks.length} tasks, ${activities.length} activities, ${drafts.length} drafts)`);

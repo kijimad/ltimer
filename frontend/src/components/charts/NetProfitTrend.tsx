@@ -10,18 +10,17 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { netProfitByPeriod } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function NetProfitTrend({ db, startedAt, unit }: Props) {
-  const data = useMemo(() => netProfitByPeriod(db, startedAt, unit), [db, startedAt, unit]);
+export function NetProfitTrend({ repo, startedAt, unit }: Props) {
+  const data = useMemo(() => repo.netProfitByPeriod(startedAt, unit), [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

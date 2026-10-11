@@ -9,18 +9,17 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { cumulativeFlow } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function CfdChart({ db, startedAt, unit }: Props) {
-  const data = useMemo(() => cumulativeFlow(db, startedAt, unit), [db, startedAt, unit]);
+export function CfdChart({ repo, startedAt, unit }: Props) {
+  const data = useMemo(() => repo.cumulativeFlow(startedAt, unit), [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

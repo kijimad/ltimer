@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { Box, Table } from "@chakra-ui/react";
-import type { Database } from "sql.js";
-import { fileSummary } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 import { shortName } from "../../hooks/usePeriodKey.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
 }
 
@@ -23,18 +22,18 @@ interface FileRow {
 
 type SortKey = keyof FileRow;
 
-export function FileTable({ db, startedAt }: Props) {
+export function FileTable({ repo, startedAt }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [asc, setAsc] = useState(false);
 
   const rows = useMemo(
     () =>
-      fileSummary(db, startedAt).map(({ avgLead, ...r }): FileRow => ({
+      repo.fileSummary(startedAt).map(({ avgLead, ...r }): FileRow => ({
         ...r,
         display: shortName(r.file),
         avgLead: Math.round(avgLead * 10) / 10,
       })),
-    [db, startedAt],
+    [repo, startedAt],
   );
 
   const sorted = useMemo(() => {

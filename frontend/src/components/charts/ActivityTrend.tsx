@@ -9,20 +9,19 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { activityByPeriod } from "../../db/charts.ts";
+import type { ActivityRepository } from "../../data/repository.ts";
 import { PALETTE, GRID_STROKE, AXIS_STROKE, TOOLTIP_STYLE } from "./colors.ts";
 
 interface Props {
-  db: Database;
+  repo: ActivityRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function ActivityTrend({ db, startedAt, unit }: Props) {
+export function ActivityTrend({ repo, startedAt, unit }: Props) {
   const { data, titles } = useMemo(() => {
-    const cells = activityByPeriod(db, startedAt, unit);
+    const cells = repo.byPeriod(startedAt, unit);
     const titles = [...new Set(cells.map((c) => c.title))].sort();
     const periods = [...new Set(cells.map((c) => c.period))];
     const data = periods.map((p) => {
@@ -33,7 +32,7 @@ export function ActivityTrend({ db, startedAt, unit }: Props) {
       return row;
     });
     return { data, titles };
-  }, [db, startedAt, unit]);
+  }, [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import type { Database } from "sql.js";
-import { queueTimeHistogram } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 import { GRID_STROKE, AXIS_STROKE, TOOLTIP_STYLE } from "./colors.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
 }
 
-export function QueueTimeChart({ db, startedAt }: Props) {
-  const data = useMemo(() => queueTimeHistogram(db, startedAt), [db, startedAt]);
+export function QueueTimeChart({ repo, startedAt }: Props) {
+  const data = useMemo(() => repo.queueTimeHistogram(startedAt), [repo, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

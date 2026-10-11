@@ -1,21 +1,20 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { Database } from "sql.js";
-import { activityTotals } from "../../db/charts.ts";
+import type { ActivityRepository } from "../../data/repository.ts";
 import { GRID_STROKE, AXIS_STROKE, TOOLTIP_STYLE } from "./colors.ts";
 
 interface Props {
-  db: Database;
+  repo: ActivityRepository;
   startedAt: string;
 }
 
-export function ActivitySummary({ db, startedAt }: Props) {
+export function ActivitySummary({ repo, startedAt }: Props) {
   const data = useMemo(
     () =>
-      activityTotals(db, startedAt)
+      repo.totals(startedAt)
         .map(({ title, minutes }) => ({ title, hours: Math.round((minutes / 60) * 10) / 10 }))
         .sort((a, b) => b.hours - a.hours),
-    [db, startedAt],
+    [repo, startedAt],
   );
 
   return (

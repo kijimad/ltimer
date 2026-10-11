@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { interruptionsByPeriod, queueTimeHistogram } from "./charts.ts";
+import { interruptionsByPeriod, queueTimeHistogram, leadTimeHistogram, leadTimePercentiles, netProfitByPeriod } from "./charts.ts";
 import { rows } from "./database.ts";
 import { createTestDatabase, fromTasks } from "../test/db.ts";
 import type { Task, TaskClock } from "../types/index.ts";
@@ -101,3 +101,27 @@ describe("queueTimeHistogram", () => {
     expect(queueTimeHistogram(db([t]), "2024-01-01")[1]).toEqual({ bucket: "1-6h", count: 1 });
   });
 });
+
+describe("empty ranges", () => {
+  const empty = createTestDatabase({ generatedAt: "2024-03-01T03:00:00Z" });
+
+  it("returns no histogram bins without DONE tasks", () => {
+    expect(leadTimeHistogram(empty, "2024-01-01", "week")).toEqual({ data: [], bins: [] });
+  });
+
+  it("returns zero overall p85 without DONE tasks", () => {
+    expect(leadTimePercentiles(empty, "2024-01-01", "week")).toEqual({ data: [], globalP85: 0 });
+  });
+});
+
+describe("netProfitByPeriod", () => {
+  it("fills zero where a period has only throughput or only work", () => {
+    const done = { ...task("done", [{ start: "2024-01-01 09:00", end: "2024-01-01 09:25", minutes: 25 }]), closed_at: "2024-01-01 10:00" };
+    const work = { ...task("work", [{ start: "2024-01-08 09:00", end: "2024-01-08 10:30", minutes: 90 }]), status: "TODO" as const };
+    expect(netProfitByPeriod(db([done, work]), "2024-01-01", "week")).toEqual([
+      { period: "2024-01-01", Throughput: 1, OE: 0.4 },
+      { period: "2024-01-08", Throughput: 0, OE: 1.5 },
+    ]);
+  });
+});
+

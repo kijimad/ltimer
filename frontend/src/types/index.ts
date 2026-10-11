@@ -37,21 +37,5 @@ export interface ActivityDailyEntry {
   activities: { title: string; minutes: number }[];
 }
 
-// DB の行の形式。時点は UTC
-
-export interface RawClock {
-  start: string;
-  end: string;
-  minutes: number;
-}
-
-export interface RawTask {
-  title: string;
-  file: string;
-  status: Task["status"];
-  closed_at: string | null;
-  clocks: RawClock[];
-}
-
 export type TimeUnit = "week" | "month";
 export type TimeRange = "1w" | "1m" | "3m" | "6m";

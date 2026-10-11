@@ -8,31 +8,28 @@ import { SummaryRow } from "../components/SummaryRow.tsx";
 import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate } from "../dates.ts";
-import { taskSummary } from "../db/summary.ts";
-import { useDatabase } from "../hooks/useDatabase.ts";
-import { generatedAt } from "../db/queries.ts";
-import { tasksInRange } from "../db/charts.ts";
+import { useRepository } from "../hooks/useRepository.ts";
 
 export function TasksPage() {
-  const { db, error } = useDatabase();
+  const { repo, error } = useRepository();
   const { range } = useTimeRange();
   const now = useMountTime();
 
   const unit = unitForRange(range);
 
-  const generated = useMemo(() => (db ? generatedAt(db) : null), [db]);
+  const generated = useMemo(() => (repo ? repo.generatedAt() : null), [repo]);
   const asOf = generated ? asOfDate(generated) : null;
   const dates = useMemo(() => (asOf ? rangeDates(range, asOf) : null), [range, asOf]);
 
-  const tasks = useMemo(() => (db && dates ? tasksInRange(db, dates.startedAt) : null), [db, dates]);
+  const tasks = useMemo(() => (repo && dates ? repo.tasks.inRange(dates.startedAt) : null), [repo, dates]);
 
-  const summary = useMemo(() => (db && asOf ? taskSummary(db, asOf, range) : null), [db, asOf, range]);
+  const summary = useMemo(() => (repo && asOf ? repo.tasks.summary(asOf, range) : null), [repo, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
-  if (!db || !generated || !asOf || !dates || !tasks || !summary) return <Box p={5}>Loading...</Box>;
+  if (!repo || !generated || !asOf || !dates || !tasks || !summary) return <Box p={5}>Loading...</Box>;
 
   const { startedAt, finishedAt } = dates;
-  const chartProps = { db, tasks, unit, startedAt, asOf };
+  const chartProps = { repo: repo.tasks, tasks, unit, startedAt, asOf };
 
   return (
     <Box p={5}>

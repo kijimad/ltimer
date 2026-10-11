@@ -8,18 +8,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { wipByPeriod } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function WipTrend({ db, startedAt, unit }: Props) {
-  const data = useMemo(() => wipByPeriod(db, startedAt, unit).map(({ period, wip }) => ({ period, wip })), [db, startedAt, unit]);
+export function WipTrend({ repo, startedAt, unit }: Props) {
+  const data = useMemo(() => repo.wipByPeriod(startedAt, unit).map(({ period, wip }) => ({ period, wip })), [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

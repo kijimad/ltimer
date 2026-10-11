@@ -8,24 +8,23 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { wipByPeriod } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function RoiChart({ db, startedAt, unit }: Props) {
+export function RoiChart({ repo, startedAt, unit }: Props) {
   const data = useMemo(
     () =>
-      wipByPeriod(db, startedAt, unit).map(({ period, wip, throughput }) => ({
+      repo.wipByPeriod(startedAt, unit).map(({ period, wip, throughput }) => ({
         period,
         ROI: wip > 0 ? Math.round((throughput / wip) * 100) / 100 : 0,
       })),
-    [db, startedAt, unit],
+    [repo, startedAt, unit],
   );
 
   return (

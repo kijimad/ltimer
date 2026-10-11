@@ -12,13 +12,10 @@ import { SummaryRow } from "../components/SummaryRow.tsx";
 import { FooterGeneratedAt } from "../components/GeneratedAt.tsx";
 import { useMountTime } from "../hooks/useMountTime.ts";
 import { asOfDate, daysBetween } from "../dates.ts";
-import { generatedAt } from "../db/queries.ts";
-import { draftsInRange, draftAges } from "../db/charts.ts";
-import { draftSummary } from "../db/summary.ts";
-import { useDatabase } from "../hooks/useDatabase.ts";
+import { useRepository } from "../hooks/useRepository.ts";
 
 export function DraftPage() {
-  const { db, error } = useDatabase();
+  const { repo, error } = useRepository();
   const { range } = useTimeRange();
   const now = useMountTime();
   const [sortKey, setSortKey] = useState<string>("lead_time_days");
@@ -33,11 +30,11 @@ export function DraftPage() {
     }
   };
 
-  const generated = useMemo(() => (db ? generatedAt(db) : null), [db]);
+  const generated = useMemo(() => (repo ? repo.generatedAt() : null), [repo]);
   const asOf = generated ? asOfDate(generated) : null;
   const dates = useMemo(() => (asOf ? rangeDates(range, asOf) : null), [range, asOf]);
 
-  const filtered = useMemo(() => (db && dates ? draftsInRange(db, dates.startedAt) : null), [db, dates]);
+  const filtered = useMemo(() => (repo && dates ? repo.drafts.inRange(dates.startedAt) : null), [repo, dates]);
 
   const sorted = useMemo(() => {
     if (!filtered) return [];
@@ -52,10 +49,10 @@ export function DraftPage() {
     });
   }, [filtered, sortKey, sortDir]);
 
-  const summary = useMemo(() => (db && asOf ? draftSummary(db, asOf, range) : null), [db, asOf, range]);
+  const summary = useMemo(() => (repo && asOf ? repo.drafts.summary(asOf, range) : null), [repo, asOf, range]);
 
   if (error) return <Box p={5}>Error: {error}</Box>;
-  if (!db || !generated || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
+  if (!repo || !generated || !asOf || !dates || !filtered || !summary) return <Box p={5}>Loading...</Box>;
 
   const { startedAt, finishedAt } = dates;
 
@@ -76,7 +73,7 @@ export function DraftPage() {
     status: e.status,
   }));
 
-  const draftAging = draftAges(db, startedAt, asOf).map((e) => ({ name: e.title.slice(0, 30), days: e.days, file: e.file }));
+  const draftAging = repo.drafts.ages(startedAt, asOf).map((e) => ({ name: e.title.slice(0, 30), days: e.days, file: e.file }));
 
   return (
     <Box p={5}>

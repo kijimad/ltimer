@@ -8,18 +8,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { throughputByPeriod } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function ThroughputChart({ db, startedAt, unit }: Props) {
-  const data = useMemo(() => throughputByPeriod(db, startedAt, unit), [db, startedAt, unit]);
+export function ThroughputChart({ repo, startedAt, unit }: Props) {
+  const data = useMemo(() => repo.throughputByPeriod(startedAt, unit), [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

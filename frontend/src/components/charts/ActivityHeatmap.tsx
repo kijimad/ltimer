@@ -1,11 +1,10 @@
 import { useMemo } from "react";
 import { Box, Text } from "@chakra-ui/react";
-import type { Database } from "sql.js";
-import { activityMinutesByDate } from "../../db/charts.ts";
+import type { ActivityRepository } from "../../data/repository.ts";
 import { addDays, daysBetween } from "../../dates.ts";
 
 interface Props {
-  db: Database;
+  repo: ActivityRepository;
   startedAt: string;
 }
 
@@ -21,9 +20,9 @@ function getColor(minutes: number): string {
   return "#216e39";
 }
 
-export function ActivityHeatmap({ db, startedAt }: Props) {
+export function ActivityHeatmap({ repo, startedAt }: Props) {
   const { grid, weeks } = useMemo(() => {
-    const byDate = activityMinutesByDate(db, startedAt);
+    const byDate = repo.minutesByDate(startedAt);
     if (byDate.length === 0) return { grid: [], weeks: 0 };
     const minutes = new Map(byDate.map((d) => [d.date, d.minutes]));
 
@@ -36,7 +35,7 @@ export function ActivityHeatmap({ db, startedAt }: Props) {
       return { date, minutes: minutes.get(date) ?? 0, dayOfWeek: i % 7, week: Math.floor(i / 7) };
     });
     return { grid, weeks: Math.floor(days / 7) + 1 };
-  }, [db, startedAt]);
+  }, [repo, startedAt]);
 
   if (grid.length === 0) return <Text color="gray.500">No data</Text>;
 

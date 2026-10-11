@@ -1,24 +1,23 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { Database } from "sql.js";
-import { agingTodos } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 import { AGING_THRESHOLD_DAYS, GRID_STROKE, AXIS_STROKE, TOOLTIP_DIV_STYLE } from "./colors.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   asOf: string;
 }
 
-export function AgingWip({ db, startedAt, asOf }: Props) {
+export function AgingWip({ repo, startedAt, asOf }: Props) {
   const data = useMemo(
     () =>
-      agingTodos(db, startedAt, asOf).map(({ title, days }) => ({
+      repo.agingTodos(startedAt, asOf).map(({ title, days }) => ({
         title: title.slice(0, 25),
         days,
         fill: days > AGING_THRESHOLD_DAYS ? "#f85149" : "#f0883e",
       })),
-    [db, startedAt, asOf],
+    [repo, startedAt, asOf],
   );
 
   return (

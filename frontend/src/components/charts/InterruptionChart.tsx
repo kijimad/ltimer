@@ -1,18 +1,17 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { interruptionsByPeriod } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 import { GRID_STROKE, AXIS_STROKE, TOOLTIP_STYLE } from "./colors.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function InterruptionChart({ db, startedAt, unit }: Props) {
-  const data = useMemo(() => interruptionsByPeriod(db, startedAt, unit), [db, startedAt, unit]);
+export function InterruptionChart({ repo, startedAt, unit }: Props) {
+  const data = useMemo(() => repo.interruptionsByPeriod(startedAt, unit), [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

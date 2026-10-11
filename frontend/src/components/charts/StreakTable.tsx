@@ -1,21 +1,20 @@
 import { useMemo } from "react";
 import { Box, Text } from "@chakra-ui/react";
-import type { Database } from "sql.js";
-import { activityStreaks } from "../../db/charts.ts";
+import type { ActivityRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: ActivityRepository;
   startedAt: string;
   asOf: string;
 }
 
-export function StreakTable({ db, startedAt, asOf }: Props) {
+export function StreakTable({ repo, startedAt, asOf }: Props) {
   const streaks = useMemo(
     () =>
-      activityStreaks(db, startedAt, asOf)
+      repo.streaks(startedAt, asOf)
         .map((s) => ({ ...s, rate: Math.round(s.rate) }))
         .sort((a, b) => b.rate - a.rate),
-    [db, startedAt, asOf],
+    [repo, startedAt, asOf],
   );
 
   if (streaks.length === 0) return <Text color="gray.500">No data</Text>;

@@ -9,18 +9,17 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Database } from "sql.js";
-import { dailyWorkInRange } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 import { PALETTE } from "./colors.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
 }
 
-export function DailyWork({ db, startedAt }: Props) {
+export function DailyWork({ repo, startedAt }: Props) {
   const { chartData, taskNames } = useMemo(() => {
-    const dailyWork = dailyWorkInRange(db, startedAt);
+    const dailyWork = repo.dailyWork(startedAt);
     const nameSet = new Set<string>();
     for (const entry of dailyWork) {
       for (const t of entry.tasks) nameSet.add(t.title);
@@ -36,7 +35,7 @@ export function DailyWork({ db, startedAt }: Props) {
     });
 
     return { chartData, taskNames };
-  }, [db, startedAt]);
+  }, [repo, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>

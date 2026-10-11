@@ -3,18 +3,17 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { leadTimePercentiles } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function PercentileChart({ db, startedAt, unit }: Props) {
-  const { data, globalP85 } = useMemo(() => leadTimePercentiles(db, startedAt, unit), [db, startedAt, unit]);
+export function PercentileChart({ repo, startedAt, unit }: Props) {
+  const { data, globalP85 } = useMemo(() => repo.leadTimePercentiles(startedAt, unit), [repo, startedAt, unit]);
 
 
   return (

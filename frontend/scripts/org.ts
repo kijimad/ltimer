@@ -1,27 +1,5 @@
 // org-roam のファイルから DB の行を作る。ファイルや git には触れない純関数だけを置く
-
-export interface ClockRow {
-  start: string;
-  end: string;
-  minutes: number;
-}
-
-export interface TaskRow {
-  title: string;
-  file: string;
-  status: "TODO" | "DONE" | "CLOSE";
-  closed_at: string | null;
-  clocks: ClockRow[];
-}
-
-export interface DraftRow {
-  file: string;
-  title: string;
-  created: string;
-  published: string | null;
-  lead_time_days: number | null;
-  status: "draft" | "published";
-}
+import type { ClockRow, TaskRow, DraftRow } from "../src/db/rows.ts";
 
 // Python の \w と同じく、日本語の曜日やタグにも一致させる
 const W = "[\\p{L}\\p{N}_]";

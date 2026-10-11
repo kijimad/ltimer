@@ -2,6 +2,7 @@ import type { Database, SqlValue } from "sql.js";
 import type { Task, TaskClock, TimeUnit, DailyWorkEntry, DraftEntry } from "../types/index.ts";
 import { rows } from "./database.ts";
 import { RESUME_GAP_MINUTES } from "./summary.ts";
+import type { FileSummaryRow, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
 
 /** 週は ISO の月曜、月は YYYY-MM。日付 (YYYY-MM-DD) にも日時 (YYYY-MM-DD HH:MM) にも使える */
 function period(expr: string, unit: TimeUnit): string {
@@ -54,17 +55,6 @@ export function alertTodos(db: Database, startedAt: string, thresholdDays: numbe
   );
 }
 
-export interface FileSummaryRow {
-  file: string;
-  total: number;
-  todo: number;
-  done: number;
-  close: number;
-  work: number;
-  avgLead: number;
-  maxLead: number;
-}
-
 export function fileSummary(db: Database, startedAt: string): FileSummaryRow[] {
   return q(
     db,
@@ -88,7 +78,7 @@ export function throughputByPeriod(db: Database, startedAt: string, unit: TimeUn
   );
 }
 
-export function leadTimePercentiles(db: Database, startedAt: string, unit: TimeUnit) {
+export function leadTimePercentiles(db: Database, startedAt: string, unit: TimeUnit): LeadTimePercentiles {
   const data = q<{ period: string; p50: number; p85: number; p95: number }>(
     db,
     `WITH ${FT}
@@ -106,7 +96,7 @@ export function leadTimePercentiles(db: Database, startedAt: string, unit: TimeU
 }
 
 /** ビンの幅は全体の最大値を6分割した値。期間ごとに、出現したビンすべての件数を並べる */
-export function leadTimeHistogram(db: Database, startedAt: string, unit: TimeUnit) {
+export function leadTimeHistogram(db: Database, startedAt: string, unit: TimeUnit): LeadTimeHistogram {
   const DONE = `WITH ${FT} SELECT ${period("completed_date", unit)} AS period, lead_time_days AS v FROM ft WHERE status = 'DONE' AND completed_date IS NOT NULL`;
   const [{ max }] = q<{ max: number | null }>(db, `SELECT max(v) AS max FROM (${DONE})`, [startedAt]);
   if (max === null) return { data: [], bins: [] as string[] };
@@ -131,8 +121,8 @@ export function leadTimeHistogram(db: Database, startedAt: string, unit: TimeUni
  * 各期間の WIP (開始済みで未完了) と完了数・平均リードタイム。
  * 期間は対象タスクの開始と完了の期間の和集合で、?1 の期間以降だけを返す
  */
-export function wipByPeriod(db: Database, startedAt: string, unit: TimeUnit) {
-  return q<{ period: string; wip: number; throughput: number; avgLead: number | null }>(
+export function wipByPeriod(db: Database, startedAt: string, unit: TimeUnit): WipPoint[] {
+  return q<WipPoint>(
     db,
     `WITH ${FT},
      r AS (
@@ -152,8 +142,8 @@ export function wipByPeriod(db: Database, startedAt: string, unit: TimeUnit) {
 }
 
 /** 期間ごとの開始・完了・CLOSE の累積。累積は対象タスクの全期間から数え、?1 の期間以降だけを返す */
-export function cumulativeFlow(db: Database, startedAt: string, unit: TimeUnit) {
-  return q<{ period: string; Started: number; Completed: number; Closed: number }>(
+export function cumulativeFlow(db: Database, startedAt: string, unit: TimeUnit): FlowPoint[] {
+  return q<FlowPoint>(
     db,
     `WITH ${FT},
      ev AS (
@@ -170,8 +160,8 @@ export function cumulativeFlow(db: Database, startedAt: string, unit: TimeUnit) 
   );
 }
 
-export function burnByDate(db: Database, startedAt: string) {
-  return q<{ date: string; Started: number; Completed: number; WIP: number }>(
+export function burnByDate(db: Database, startedAt: string): BurnPoint[] {
+  return q<BurnPoint>(
     db,
     `WITH ${FT},
      ev AS (
@@ -185,8 +175,8 @@ export function burnByDate(db: Database, startedAt: string) {
   );
 }
 
-export function cashFlowByPeriod(db: Database, startedAt: string, unit: TimeUnit) {
-  return q<{ period: string; CashFlow: number }>(
+export function cashFlowByPeriod(db: Database, startedAt: string, unit: TimeUnit): CashFlowPoint[] {
+  return q<CashFlowPoint>(
     db,
     `WITH ${FT},
      ev AS (
@@ -201,7 +191,7 @@ export function cashFlowByPeriod(db: Database, startedAt: string, unit: TimeUnit
 }
 
 /** 完了数 (T) と、日ごとに時間へ丸めた作業時間の期間合計 (OE) */
-export function netProfitByPeriod(db: Database, startedAt: string, unit: TimeUnit) {
+export function netProfitByPeriod(db: Database, startedAt: string, unit: TimeUnit): NetProfitPoint[] {
   const throughput = new Map(throughputByPeriod(db, startedAt, unit).map((r) => [r.period, r.count]));
   const oe = new Map<string, number>();
   for (const d of q<{ period: string; minutes: number }>(
@@ -306,8 +296,8 @@ export function activityMinutesByDate(db: Database, startedAt: string): { date: 
  * Activity ごとの最長・現在のストリークと実施率。連続する日の島を「日付 - 島内の順番」で見分ける。
  * 当日か前日に実施していればストリーク継続中とみなす
  */
-export function activityStreaks(db: Database, startedAt: string, asOf: string) {
-  return q<{ title: string; current: number; max: number; recentDays: number; rate: number }>(
+export function activityStreaks(db: Database, startedAt: string, asOf: string): Streak[] {
+  return q<Streak>(
     db,
     `WITH a AS (SELECT DISTINCT title, date FROM activity_daily WHERE date >= ?1),
      isl AS (SELECT title, date, julianday(date) - row_number() OVER (PARTITION BY title ORDER BY date) AS g FROM a),

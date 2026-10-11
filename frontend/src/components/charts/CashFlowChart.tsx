@@ -9,18 +9,17 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { cashFlowByPeriod } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function CashFlowChart({ db, startedAt, unit }: Props) {
-  const data = useMemo(() => cashFlowByPeriod(db, startedAt, unit), [db, startedAt, unit]);
+export function CashFlowChart({ repo, startedAt, unit }: Props) {
+  const data = useMemo(() => repo.cashFlowByPeriod(startedAt, unit), [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { tasksInRange, dailyWorkInRange } from "./charts.ts";
 import { rows } from "./database.ts";
 import { createTestDatabase } from "../test/db.ts";
-import type { RawTask } from "../types/index.ts";
+import type { TaskRow } from "./rows.ts";
 
 // テストは TZ=Asia/Tokyo で実行する (vite.config.ts の test.env)
 const ALL = "2000-01-01";
 
-function rawTask(overrides: Partial<RawTask>): RawTask {
+function rawTask(overrides: Partial<TaskRow>): TaskRow {
   return { title: "t", file: "f.org", status: "DONE", closed_at: null, clocks: [], ...overrides };
 }
 
@@ -87,3 +87,4 @@ describe("views over activities", () => {
     ]);
   });
 });
+

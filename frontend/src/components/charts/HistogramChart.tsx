@@ -9,20 +9,19 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Database } from "sql.js";
 import type { TimeUnit } from "../../types/index.ts";
-import { leadTimeHistogram } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 const BIN_COLORS = ["#58a6ff", "#3fb950", "#f0883e", "#f85149", "#bc8cff", "#79c0ff", "#d2a8ff", "#56d364"];
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
   unit: TimeUnit;
 }
 
-export function HistogramChart({ db, startedAt, unit }: Props) {
-  const { data, bins } = useMemo(() => leadTimeHistogram(db, startedAt, unit), [db, startedAt, unit]);
+export function HistogramChart({ repo, startedAt, unit }: Props) {
+  const { data, bins } = useMemo(() => repo.leadTimeHistogram(startedAt, unit), [repo, startedAt, unit]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>

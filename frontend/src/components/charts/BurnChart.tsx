@@ -9,16 +9,15 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { Database } from "sql.js";
-import { burnByDate } from "../../db/charts.ts";
+import type { TaskRepository } from "../../data/repository.ts";
 
 interface Props {
-  db: Database;
+  repo: TaskRepository;
   startedAt: string;
 }
 
-export function BurnChart({ db, startedAt }: Props) {
-  const data = useMemo(() => burnByDate(db, startedAt), [db, startedAt]);
+export function BurnChart({ repo, startedAt }: Props) {
+  const data = useMemo(() => repo.burnByDate(startedAt), [repo, startedAt]);
 
   return (
     <ResponsiveContainer width="100%" height={350}>
