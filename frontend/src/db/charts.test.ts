@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod, wipByPeriod, cumulativeFlow, burnByDate, cashFlowByPeriod, activityByPeriod, activityByWeekdayHour } from "./charts.ts";
+import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod, wipByPeriod, cumulativeFlow, burnByDate, cashFlowByPeriod, activityByPeriod, activityByWeekdayHour, leadTimePace, taskSizeHistogram, estimates } from "./charts.ts";
 import { rows } from "./database.ts";
 import { createTestDatabase, fromTasks, fromDaily } from "../test/db.ts";
 import type { Task, TaskClock } from "../types/index.ts";
@@ -11,7 +11,7 @@ function task(title: string, clocks: TaskClock[]): Task {
   };
 }
 const c = (start: string, end: string): TaskClock => ({ start, end, minutes: 25 });
-const db = (tasks: Task[]) => createTestDatabase({ generatedAt: "2024-03-01T03:00:00Z", tasks: fromTasks(tasks) });
+const db = (tasks: Parameters<typeof fromTasks>[0]) => createTestDatabase({ generatedAt: "2024-03-01T03:00:00Z", tasks: fromTasks(tasks) });
 const gaps = (tasks: Task[]) =>
   rows<{ resumedAt: string; minutes: number }>(db(tasks), "SELECT resumed_at AS resumedAt, minutes FROM session_gaps ORDER BY resumed_at");
 /** その日 (以降の同じ週) の割り込み回数 */
@@ -286,6 +286,50 @@ describe("zero-filled periods", () => {
       { period: "2024-01-01", title: "read", minutes: 30 },
       { period: "2024-01-08", title: "read", minutes: 0 },
       { period: "2024-01-15", title: "read", minutes: 20 },
+    ]);
+  });
+});
+
+describe("leadTimePace", () => {
+  /** 01-01 に着手し、lead 日後の CLOCK で終えた DONE */
+  const withLead = (lead: number) => {
+    const end = `2024-01-${String(1 + lead).padStart(2, "0")}`;
+    return task(`d${lead}`, [c("2024-01-01 09:00", "2024-01-01 09:25"), c(`${end} 09:00`, `${end} 09:25`)]);
+  };
+
+  it("returns lead time percentiles of all DONE up to asOf", () => {
+    const tasks = Array.from({ length: 10 }, (_, i) => withLead(i + 1));
+    expect(leadTimePace(db(tasks), "2024-03-01")).toEqual({ p50: 5, p70: 7, p85: 9, p95: 10 });
+  });
+
+  it("returns null with fewer than ten DONE", () => {
+    expect(leadTimePace(db(Array.from({ length: 9 }, (_, i) => withLead(i + 1))), "2024-03-01")).toBeNull();
+  });
+});
+
+describe("taskSizeHistogram", () => {
+  it("buckets the work time of DONE finished on or after startedAt", () => {
+    const done = (d: string, minutes: number) => ({ ...task(d, [{ start: `${d} 09:00`, end: `${d} 09:25`, minutes }]), closed_at: `${d} 10:00` });
+    const todo = { ...task("todo", [{ start: "2024-01-02 09:00", end: "2024-01-02 09:25", minutes: 30 }]), status: "TODO" as const };
+    const counts = taskSizeHistogram(db([done("2023-12-31", 30), done("2024-01-01", 59), done("2024-01-02", 60), done("2024-01-03", 1000), todo]), "2024-01-01");
+    expect(counts).toEqual([
+      { bucket: "<1h", count: 1 },
+      { bucket: "1-2h", count: 1 },
+      { bucket: "2-4h", count: 0 },
+      { bucket: "4-8h", count: 0 },
+      { bucket: "8-16h", count: 0 },
+      { bucket: "16h+", count: 1 },
+    ]);
+  });
+});
+
+describe("estimates", () => {
+  it("returns DONE with an Effort finished on or after startedAt", () => {
+    const done = (d: string, effort: number | null) => ({
+      ...task(d, [{ start: `${d} 09:00`, end: `${d} 10:00`, minutes: 60 }]), closed_at: `${d} 10:00`, effort_minutes: effort,
+    });
+    expect(estimates(db([done("2023-12-31", 30), done("2024-01-01", 30), done("2024-01-02", null), done("2024-01-03", 0)]), "2024-01-01")).toEqual([
+      { title: "2024-01-01", effortMinutes: 30, actualMinutes: 60 },
     ]);
   });
 });

@@ -7,15 +7,21 @@ import { AGING_THRESHOLD_DAYS } from "./colors.ts";
 interface Props {
   repo: TaskRepository;
   startedAt: string;
+  asOf: string;
 }
 
-export function AlertList({ repo, startedAt }: Props) {
-  const alerts = useMemo(() => repo.alertTodos(startedAt, AGING_THRESHOLD_DAYS), [repo, startedAt]);
-
-  if (alerts.length === 0) return <Text color="gray.500">No alerts</Text>;
+/** Aging WIP の色と同じく、過去の DONE の p85 を超えたら警告する。DONE が少ないうちは決め打ちの日数 */
+export function AlertList({ repo, startedAt, asOf }: Props) {
+  const { alerts, threshold } = useMemo(() => {
+    const p85 = repo.leadTimePace(asOf)?.p85;
+    const threshold = p85 === undefined ? `${AGING_THRESHOLD_DAYS}日` : `過去の DONE の p85 (${p85}日)`;
+    return { alerts: repo.alertTodos(startedAt, asOf, p85 ?? AGING_THRESHOLD_DAYS), threshold };
+  }, [repo, startedAt, asOf]);
 
   return (
     <>
+      <Text fontSize="xs" color="gray.500" mb={1}>経過日数が{threshold}を超えた TODO</Text>
+      {alerts.length === 0 && <Text color="gray.500">No alerts</Text>}
       {alerts.map((t, i) => (
         <Box
           key={i}
@@ -28,7 +34,7 @@ export function AlertList({ repo, startedAt }: Props) {
         >
           <Box>
             <Text as="span" color="red.500" fontWeight="bold">
-              {t.lead_time_days}d
+              {t.days}d
             </Text>{" "}
             <Text as="span" color="gray.800">{t.title}</Text>
             <br />

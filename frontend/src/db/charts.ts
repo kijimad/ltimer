@@ -3,7 +3,7 @@ import type { Task, TaskClock, TimeUnit, DailyWorkEntry, DraftEntry } from "../t
 import { rows } from "./database.ts";
 import { daysBetween } from "../dates.ts";
 import { RESUME_GAP_MINUTES, TASK_METRICS, FLOW_METRICS, leadTimePercentile, series, evaluate, calendarPeriods } from "./metricDefs.ts";
-import type { FileSummaryRow, WeekdayHourMinutes, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
+import type { FileSummaryRow, WeekdayHourMinutes, LeadTimePace, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
 
 /** Tasks ページの対象: 範囲内 (?1 以降) に触ったタスク。並びは表示の基準 (リードタイムの降順) */
 const FT = `ft AS (
@@ -43,11 +43,25 @@ export function agingTodos(db: Database, startedAt: string, asOf: string): { tit
   );
 }
 
-export function alertTodos(db: Database, startedAt: string, thresholdDays: number): Pick<Task, "title" | "file" | "lead_time_days">[] {
+/** ActionableAgile のペースと同じく、10件未満では分布とみなさない */
+const MIN_PACE_SAMPLES = 10;
+
+export function leadTimePace(db: Database, asOf: string): LeadTimePace | null {
+  const all = { startedAt: "0000-01-01", finishedAt: asOf };
+  if ((evaluate(db, TASK_METRICS.throughput, all) ?? 0) < MIN_PACE_SAMPLES) return null;
+  const [p50, p70, p85, p95] = [50, 70, 85, 95].map((p) => evaluate(db, leadTimePercentile(p), all)!);
+  return { p50, p70, p85, p95 };
+}
+
+/** 経過日数は Aging WIP と同じく、最初の CLOCK から asOf まで */
+export function alertTodos(db: Database, startedAt: string, asOf: string, thresholdDays: number): { title: string; file: string; days: number }[] {
   return q(
     db,
-    `WITH ${FT} SELECT title, file, lead_time_days FROM ft WHERE status = 'TODO' AND lead_time_days > ?2 ORDER BY lead_time_days DESC, ord`,
-    [startedAt, thresholdDays],
+    `WITH ${FT}
+     SELECT title, file, days FROM (
+       SELECT title, file, ord, CAST(julianday(?2) - julianday(substr(first_clock_in, 1, 10)) AS INTEGER) AS days FROM ft WHERE status = 'TODO'
+     ) WHERE days > ?3 ORDER BY days DESC, ord`,
+    [startedAt, asOf, thresholdDays],
   );
 }
 
@@ -208,7 +222,9 @@ export function interruptionsByPeriod(db: Database, startedAt: string, unit: Tim
   );
 }
 
-const FOCUS_BUCKETS: { label: string; maxMinutes: number }[] = [
+type Buckets = { label: string; maxMinutes: number }[];
+
+const FOCUS_BUCKETS: Buckets = [
   { label: "<1h", maxMinutes: 60 },
   { label: "1-2h", maxMinutes: 120 },
   { label: "2-3h", maxMinutes: 180 },
@@ -216,13 +232,38 @@ const FOCUS_BUCKETS: { label: string; maxMinutes: number }[] = [
   { label: "4h+", maxMinutes: Infinity },
 ];
 
-export function focusBlockHistogram(db: Database, startedAt: string): { bucket: string; count: number }[] {
-  const finite = FOCUS_BUCKETS.slice(0, -1);
+const TASK_SIZE_BUCKETS: Buckets = [
+  { label: "<1h", maxMinutes: 60 },
+  { label: "1-2h", maxMinutes: 120 },
+  { label: "2-4h", maxMinutes: 240 },
+  { label: "4-8h", maxMinutes: 480 },
+  { label: "8-16h", maxMinutes: 960 },
+  { label: "16h+", maxMinutes: Infinity },
+];
+
+/** from は minutes の列を持つ行を返す FROM 句。最後のビンは上限なし */
+function bucketCounts(db: Database, buckets: Buckets, from: string, params: SqlValue[]): { bucket: string; count: number }[] {
+  const finite = buckets.slice(0, -1);
   const bucket = `CASE ${finite.map((b, i) => `WHEN minutes < ${b.maxMinutes} THEN ${i}`).join(" ")} ELSE ${finite.length} END`;
-  const counts = new Map(
-    q<{ b: number; n: number }>(db, `SELECT ${bucket} AS b, count(*) AS n FROM focus_blocks WHERE substr(start, 1, 10) >= ?1 GROUP BY b`, [startedAt]).map((r) => [r.b, r.n]),
+  const counts = new Map(q<{ b: number; n: number }>(db, `SELECT ${bucket} AS b, count(*) AS n ${from} GROUP BY b`, params).map((r) => [r.b, r.n]));
+  return buckets.map((b, i) => ({ bucket: b.label, count: counts.get(i) ?? 0 }));
+}
+
+export function focusBlockHistogram(db: Database, startedAt: string): { bucket: string; count: number }[] {
+  return bucketCounts(db, FOCUS_BUCKETS, "FROM focus_blocks WHERE substr(start, 1, 10) >= ?1", [startedAt]);
+}
+
+export function taskSizeHistogram(db: Database, startedAt: string): { bucket: string; count: number }[] {
+  return bucketCounts(db, TASK_SIZE_BUCKETS, "FROM (SELECT total_minutes AS minutes FROM tasks_local WHERE status = 'DONE' AND completed_date >= ?1)", [startedAt]);
+}
+
+export function estimates(db: Database, startedAt: string): { title: string; effortMinutes: number; actualMinutes: number }[] {
+  return q(
+    db,
+    `SELECT title, effort_minutes AS effortMinutes, total_minutes AS actualMinutes FROM tasks_local
+     WHERE status = 'DONE' AND completed_date >= ?1 AND effort_minutes > 0 ORDER BY completed_date, id`,
+    [startedAt],
   );
-  return FOCUS_BUCKETS.map((b, i) => ({ bucket: b.label, count: counts.get(i) ?? 0 }));
 }
 
 function minutesByWeekdayHour(db: Database, table: "clocks_local" | "activity_clocks_local", startedAt: string): WeekdayHourMinutes[] {

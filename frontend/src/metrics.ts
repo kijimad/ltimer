@@ -1,7 +1,7 @@
-import type { TimeRange } from "./types/index.ts";
+import type { TimeRange, TimeUnit } from "./types/index.ts";
 import { rangeDates } from "./hooks/useTimeRange.ts";
-import { addDays, daysBetween } from "./dates.ts";
-import type { WeekdayHourMinutes, WipPoint } from "./data/repository.ts";
+import { addDays, addMonths, daysBetween } from "./dates.ts";
+import type { WeekdayHourMinutes, WipPoint, LeadTimePace, Estimate } from "./data/repository.ts";
 
 export const HISTORY_PERIODS = 12;
 
@@ -14,6 +14,8 @@ export interface GaugeMetric {
   history: number[];
   higherIsBetter: boolean;
   target?: number;
+  /** サマリで並べる見出し */
+  group?: string;
 }
 
 export interface TileMetric {
@@ -110,4 +112,151 @@ export function dailyRhythm(cells: WeekdayHourMinutes[], startedAt: string, fini
 /** リトルの法則で、期間の終わりの WIP と1日あたりのスループットからリードタイム (日) を予測する */
 export function predictedLeadTime({ days, wip, throughput }: Pick<WipPoint, "days" | "wip" | "throughput">): number | null {
   return throughput > 0 ? wip / (throughput / days) : null;
+}
+
+export const PACE_BANDS = ["p50 以内", "p70 以内", "p85 以内", "p95 以内", "p95 超"] as const;
+
+/** 経過日数が過去の DONE のリードタイムのどのパーセンタイルまでに収まるか。PACE_BANDS の添字を返す */
+export function paceBand(days: number, pace: LeadTimePace): number {
+  const i = [pace.p50, pace.p70, pace.p85, pace.p95].findIndex((limit) => days <= limit);
+  return i === -1 ? PACE_BANDS.length - 1 : i;
+}
+
+/** 週は7日、月はその月の日数がそろい、asOf (まだ終わっていない日) より前に終わった期間 */
+export function isCompletePeriod({ period, days }: Pick<WipPoint, "period" | "days">, unit: TimeUnit, asOf: string): boolean {
+  if (unit === "week") return days === 7 && addDays(period, 6) < asOf;
+  const [y, m] = period.split("-").map(Number);
+  const length = new Date(y, m, 0).getDate();
+  return days === length && `${period}-${String(length).padStart(2, "0")}` < asOf;
+}
+
+export interface ProcessLimits {
+  center: number;
+  upper: number;
+  lower: number;
+}
+
+/** 限界線を引くのに使う、欠けのない期間の最小数 */
+export const MIN_XMR_POINTS = 6;
+/** 移動範囲の中央値、平均から限界線を引くときの係数 */
+const XMR_SCALE = 3.14;
+const XMR_MEAN_SCALE = 2.66;
+const RUN_LENGTH = 8;
+
+/** 変化の兆しの強さ。限界線の外 > 4期間のうち3期間が限界線寄り > 中心の同じ側に8期間 */
+export type ProcessSignal = "limit" | "near-limit" | "run";
+const SIGNAL_RANK: Record<ProcessSignal, number> = { limit: 3, "near-limit": 2, run: 1 };
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * XmR (個々の値と移動範囲) の自然な変動の限界線と、変化の兆し。
+ * リードタイムは数件の長いタスクで平均が大きく振れるので、中心も移動範囲も中央値で取る。
+ * 限界線は欠けのない期間だけから引き、値は負にならないので下限は 0 で止める。下限が 0 なら下側の兆しは見ない
+ */
+export function processBehavior(values: (number | null)[], complete: boolean[]): { limits: ProcessLimits | null; signals: (ProcessSignal | null)[] } {
+  const signals: (ProcessSignal | null)[] = values.map(() => null);
+  const base = values.flatMap((v, i) => (v !== null && complete[i] ? [{ i, v }] : []));
+  if (base.length < MIN_XMR_POINTS) return { limits: null, signals };
+  const center = median(base.map((p) => p.v));
+  const ranges = base.slice(1).map((p, k) => Math.abs(p.v - base[k].v));
+  // 同じ値が続くと移動範囲の中央値が 0 になり、少しでも動いた点がすべて限界線の外になるので、平均の移動範囲で引く
+  const spread = median(ranges) > 0 ? XMR_SCALE * median(ranges) : XMR_MEAN_SCALE * (ranges.reduce((s, r) => s + r, 0) / ranges.length);
+  const limits = { center, upper: center + spread, lower: Math.max(0, center - spread) };
+  const hasLower = limits.lower > 0;
+  const mark = (i: number, kind: ProcessSignal) => {
+    if (signals[i] === null || SIGNAL_RANK[kind] > SIGNAL_RANK[signals[i]]) signals[i] = kind;
+  };
+
+  for (const p of base) if (p.v > limits.upper || (hasLower && p.v < limits.lower)) mark(p.i, "limit");
+
+  // 限界線寄り = 中心より限界線に近い
+  const nearUpper = (v: number) => v > (center + limits.upper) / 2;
+  const nearLower = (v: number) => hasLower && v < (center + limits.lower) / 2;
+  for (let k = 0; k + 4 <= base.length; k++) {
+    const window = base.slice(k, k + 4);
+    for (const near of [nearUpper, nearLower]) {
+      const hits = window.filter((p) => near(p.v));
+      if (hits.length >= 3) for (const p of hits) mark(p.i, "near-limit");
+    }
+  }
+
+  let run: number[] = [];
+  let runSide = 0;
+  for (const p of base) {
+    const side = Math.sign(p.v - center);
+    // 中心ちょうどの点で連なりは切れる
+    if (side !== runSide) [run, runSide] = [[], side];
+    if (side === 0) continue;
+    run.push(p.i);
+    if (run.length >= RUN_LENGTH) for (const i of run) mark(i, "run");
+  }
+  return { limits, signals };
+}
+
+/** 限界線や予測にはある程度の期間が要るので、範囲が短くても週なら26週、月なら24ヶ月はさかのぼる */
+export function historyStart(startedAt: string, asOf: string, unit: TimeUnit): string {
+  const history = unit === "week" ? addDays(asOf, -7 * 26) : addMonths(asOf, -24);
+  return [startedAt, history].sort()[0];
+}
+
+/** 実績が見積もりのこの倍率の内に収まれば、見積もりどおりとみなす */
+export const ESTIMATE_TOLERANCE = 1.25;
+
+/** 実績÷見積もりの中央値と、見積もりどおり (÷1.25〜×1.25) だった割合 (%) */
+export function estimateAccuracy(estimates: Estimate[]): { count: number; medianRatio: number; withinRate: number } | null {
+  if (estimates.length === 0) return null;
+  const ratios = estimates.map((e) => e.actualMinutes / e.effortMinutes);
+  const within = ratios.filter((r) => r >= 1 / ESTIMATE_TOLERANCE && r <= ESTIMATE_TOLERANCE).length;
+  return { count: ratios.length, medianRatio: median(ratios), withinRate: (100 * within) / ratios.length };
+}
+
+/** 再現できる乱数 (mulberry32)。同じ seed なら同じ予測になり、表示のたびに数字が揺れない */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export const FORECAST_TRIALS = 10000;
+/** 完了の少ない週ばかりだと終わらない試行があるので、ここで打ち切る */
+export const MAX_FORECAST_WEEKS = 520;
+
+/**
+ * 過去の週ごとの完了数を引き直して、items 件を終えるまでの週数を試行ごとに並べる (昇順)。どの週も 0 件なら null。
+ * MAX_FORECAST_WEEKS で終わらなかった試行は Infinity にする
+ */
+export function forecastWeeks(weekly: number[], items: number, random: () => number, trials = FORECAST_TRIALS): number[] | null {
+  if (!weekly.some((n) => n > 0)) return null;
+  const pick = () => weekly[Math.floor(random() * weekly.length)];
+  return Array.from({ length: trials }, () => {
+    let done = 0;
+    let weeks = 0;
+    while (done < items && weeks < MAX_FORECAST_WEEKS) {
+      done += pick();
+      weeks++;
+    }
+    return done < items ? Infinity : weeks;
+  }).sort((a, b) => a - b);
+}
+
+/** 過去の週ごとの完了数を引き直して、weeks 週で終える件数を試行ごとに並べる (昇順) */
+export function forecastItems(weekly: number[], weeks: number, random: () => number, trials = FORECAST_TRIALS): number[] {
+  if (weekly.length === 0) return [];
+  const pick = () => weekly[Math.floor(random() * weekly.length)];
+  return Array.from({ length: trials }, () => Array.from({ length: weeks }, pick).reduce((s, n) => s + n, 0)).sort((a, b) => a - b);
+}
+
+/** 昇順の試行結果のうち、割合 p (0〜1) の試行がこの値以下になる値 */
+export function quantile(sorted: number[], p: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(p * sorted.length) - 1))];
 }

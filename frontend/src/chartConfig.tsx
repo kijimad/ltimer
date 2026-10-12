@@ -5,6 +5,10 @@ import { LeadTimeBar } from "./components/charts/LeadTimeBar.tsx";
 import { ScatterChart } from "./components/charts/ScatterChart.tsx";
 import { WipTrend } from "./components/charts/WipTrend.tsx";
 import { ThroughputChart } from "./components/charts/ThroughputChart.tsx";
+import { ProcessBehaviorChart } from "./components/charts/ProcessBehaviorChart.tsx";
+import { ForecastChart } from "./components/charts/ForecastChart.tsx";
+import { TaskSizeChart } from "./components/charts/TaskSizeChart.tsx";
+import { EstimateChart } from "./components/charts/EstimateChart.tsx";
 import { HistogramChart } from "./components/charts/HistogramChart.tsx";
 import { FlowEfficiency } from "./components/charts/FlowEfficiency.tsx";
 import { AgingWip } from "./components/charts/AgingWip.tsx";
@@ -88,6 +92,18 @@ export const CHART_GROUPS: ChartGroup[] = [
         desc: "横軸がセッション数(clock_count)、縦軸がリードタイム。セッション数が多い=バッチが大きいタスクほどリードタイムが長い傾向があるか確認する",
         render: ({ tasks }) => <BatchSizeChart tasks={tasks} />,
       },
+      {
+        key: "task-size",
+        title: "Task Size",
+        desc: "範囲内に終えたDONE 1件あたりの実作業時間の分布。大きいタスクほどリードタイムが延びてばらつくので、右に寄っていれば分割を検討する",
+        render: ({ repo, startedAt }) => <TaskSizeChart repo={repo} startedAt={startedAt} />,
+      },
+      {
+        key: "estimate",
+        title: "Estimate Accuracy",
+        desc: "範囲内に終えたDONEのうち :Effort: で見積もったものの、横軸が見積もり、縦軸が実作業時間 (両軸とも対数)。点線より上は見積もりより長くかかった",
+        render: ({ repo, startedAt }) => <EstimateChart repo={repo} startedAt={startedAt} />,
+      },
     ],
   },
   {
@@ -113,6 +129,18 @@ export const CHART_GROUPS: ChartGroup[] = [
         render: ({ repo, startedAt, unit }) => <ThroughputChart repo={repo} startedAt={startedAt} unit={unit} />,
       },
       {
+        key: "process-behavior",
+        title: "Process Behavior Chart",
+        desc: "期間ごとの完了数と平均リードタイムに、XmR の自然な変動の限界線 (中央値 ± 3.14 × 移動範囲の中央値) を引く。変化の兆しは、赤=限界線の外、橙=4期間のうち3期間が限界線寄り、黄=中央値の同じ側に8期間。白抜きは端の欠けた期間で、限界線の計算に入れない。範囲が短くても週なら26週、月なら24ヶ月さかのぼる",
+        render: ({ repo, startedAt, asOf, unit }) => <ProcessBehaviorChart repo={repo} startedAt={startedAt} asOf={asOf} unit={unit} />,
+      },
+      {
+        key: "forecast",
+        title: "Monte Carlo Forecast",
+        desc: "過去の週ごとの完了数を引き直す試行を1万回くり返し、範囲内に触ったTODOをすべて終えるまでの週数と、次の4週で終える件数を確率つきで予測する",
+        render: ({ repo, startedAt, asOf }) => <ForecastChart repo={repo} startedAt={startedAt} asOf={asOf} />,
+      },
+      {
         key: "cfd",
         title: "Cumulative Flow Diagram",
         desc: "範囲の始まりからのStarted/Completed/Closedの累積数を面グラフで表示。StartedとCompletedの差が範囲内で増えた仕掛かりで、広がっていれば着手が完了を上回っている",
@@ -127,7 +155,7 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "aging-wip",
         title: "Aging WIP",
-        desc: "現在TODOのタスクが最初のクロックインから何日経過しているか。30日超は赤色で警告",
+        desc: "現在TODOのタスクが最初のクロックインから何日経過しているか。色は過去のDONEのリードタイムのどのパーセンタイルまでに収まるか (ペース)。DONEが10件未満のうちは30日超を赤色で警告",
         render: ({ repo, startedAt, asOf }) => <AgingWip repo={repo} startedAt={startedAt} asOf={asOf} />,
       },
       {
@@ -229,9 +257,9 @@ export const CHART_GROUPS: ChartGroup[] = [
       {
         key: "alerts",
         title: "Alerts",
-        desc: "TODO状態かつリードタイム30日超のタスクを警告表示。長期間放置されているタスクの棚卸しに使う",
+        desc: "TODO状態で、最初のクロックインからの経過日数が過去のDONEのリードタイムのp85を超えたタスクを警告表示 (DONEが10件未満のうちは30日超)。長期間放置されているタスクの棚卸しに使う",
         full: false,
-        render: ({ repo, startedAt }) => <AlertList repo={repo} startedAt={startedAt} />,
+        render: ({ repo, startedAt, asOf }) => <AlertList repo={repo} startedAt={startedAt} asOf={asOf} />,
       },
       {
         key: "file-table",

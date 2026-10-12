@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { summaryPeriods, scaleFrom, bandOf, dailyRhythm, predictedLeadTime } from "./metrics.ts";
+import {
+  summaryPeriods, scaleFrom, bandOf, dailyRhythm, predictedLeadTime, paceBand, isCompletePeriod, processBehavior,
+  historyStart, estimateAccuracy, seededRandom, forecastWeeks, forecastItems, quantile,
+} from "./metrics.ts";
 
 describe("summaryPeriods", () => {
   it("starts with the selected range and continues with contiguous past periods", () => {
@@ -84,5 +87,157 @@ describe("predictedLeadTime", () => {
 
   it("returns null without completions", () => {
     expect(predictedLeadTime({ days: 7, wip: 3, throughput: 0 })).toBeNull();
+  });
+});
+
+describe("paceBand", () => {
+  const pace = { p50: 2, p70: 5, p85: 10, p95: 20 };
+
+  it("puts days on a percentile into that band", () => {
+    expect([0, 2, 3, 5, 10, 20, 21].map((d) => paceBand(d, pace))).toEqual([0, 0, 1, 1, 2, 3, 4]);
+  });
+});
+
+describe("isCompletePeriod", () => {
+  it("needs every day of the week or the month", () => {
+    expect(isCompletePeriod({ period: "2024-01-01", days: 7 }, "week", "2024-03-01")).toBe(true);
+    expect(isCompletePeriod({ period: "2024-01-01", days: 5 }, "week", "2024-03-01")).toBe(false);
+    expect(isCompletePeriod({ period: "2024-02", days: 29 }, "month", "2024-03-01")).toBe(true);
+    expect(isCompletePeriod({ period: "2023-02", days: 29 }, "month", "2024-03-01")).toBe(false);
+  });
+
+  it("does not count a period ending on asOf, which is not over yet", () => {
+    // 2024-03-03 (日) で終わる週と、3月
+    expect(isCompletePeriod({ period: "2024-02-26", days: 7 }, "week", "2024-03-03")).toBe(false);
+    expect(isCompletePeriod({ period: "2024-02-26", days: 7 }, "week", "2024-03-04")).toBe(true);
+    expect(isCompletePeriod({ period: "2024-03", days: 31 }, "month", "2024-03-31")).toBe(false);
+  });
+});
+
+describe("processBehavior", () => {
+  const all = (n: number) => Array.from({ length: n }, () => true);
+  /** 兆しを1文字で並べる。L=限界線の外、N=限界線寄り、R=同じ側の連なり */
+  const flags = (values: number[]) =>
+    processBehavior(values, all(values.length)).signals.map((s) => ({ limit: "L", "near-limit": "N", run: "R" })[s!] ?? "-").join("");
+
+  it("draws limits at the median plus and minus 3.14 median moving ranges", () => {
+    // 中央値 11、移動範囲はすべて 2
+    expect(processBehavior([10, 12, 10, 12, 10, 12], all(6)).limits).toEqual({ center: 11, upper: 11 + 3.14 * 2, lower: 11 - 3.14 * 2 });
+    expect(processBehavior([4, 6, 4, 6, 4, 6], all(6)).limits!.lower).toBe(0);
+  });
+
+  it("keeps a few long values from moving the center", () => {
+    expect(processBehavior([1, 1, 2, 1, 70, 60, 1, 2], all(8)).limits!.center).toBe(1.5);
+  });
+
+  it("flags points beyond the upper or the lower limit", () => {
+    expect(flags([5, 5, 6, 5, 5, 6, 30])).toBe("------L");
+    // 中央値 20、下限 16.86
+    expect(flags([20, 21, 20, 21, 20, 21, 15, 15, 20, 15])).toBe("------LL-L");
+  });
+
+  it("flags three of four points closer to a limit than to the center", () => {
+    // 中央値 6、上限 9.14。9 は中心より上限に近い
+    expect(flags([5, 6, 5, 6, 5, 6, 9, 9, 5, 9, 5, 6])).toBe("------NN-N--");
+  });
+
+  it("does not look for signals below a lower limit clamped at zero", () => {
+    // 中央値 3。下限は負になるので 0 で止まり、0 が続いても限界線寄りとはみなさない
+    expect(flags([0, 0, 3, 0, 3, 3, 4, 0, 6, 3])).toBe("-".repeat(10));
+  });
+
+  it("leaves partial periods out of the limits and the signals", () => {
+    const values = [0, 4, 6, 4, 6, 4, 6, 100];
+    const { limits, signals } = processBehavior(values, [false, ...all(6), false]);
+    expect(limits!.center).toBe(5);
+    expect(signals.every((x) => x === null)).toBe(true);
+  });
+
+  it("flags eight periods or more in a row on the same side of the center", () => {
+    // 中央値 6。下の側の7期間は兆しにならず、上の側の9期間がなる
+    expect(flags([3, 1, 3, 1, 3, 1, 3, 9, 10, 9, 10, 9, 10, 9, 10, 9, 1, 3])).toBe("-------RRRRRRRRR--");
+  });
+
+  it("restarts the run at a point on the center", () => {
+    // 中央値 5。5 の点で下の側の連なりが4期間ずつに切れる
+    expect(flags([1, 3, 1, 3, 5, 1, 3, 1, 3, 9, 7, 9, 7, 5, 7, 9, 7])).toBe("-".repeat(17));
+  });
+
+  it("falls back to the average moving range when the median moving range is zero", () => {
+    // 移動範囲は 0,0,1,1,0,0,2,2,0 で中央値 0、平均 2/3。上限は 2.66 × 2/3
+    const { limits } = processBehavior([0, 0, 0, 1, 0, 0, 0, 2, 0, 0], all(10));
+    expect(limits!.upper).toBeCloseTo((2.66 * 6) / 9, 10);
+    expect(flags([0, 0, 0, 1, 0, 0, 0, 2, 0, 0])).toBe("-------L--");
+  });
+
+  it("does not draw limits from too few complete periods", () => {
+    expect(processBehavior([1, 2, 3, 4, 5, null], all(6))).toEqual({ limits: null, signals: [null, null, null, null, null, null] });
+  });
+});
+
+describe("historyStart", () => {
+  it("goes back at least 26 weeks or 24 months", () => {
+    expect(historyStart("2026-10-05", "2026-10-12", "week")).toBe("2026-04-13");
+    expect(historyStart("2026-04-12", "2026-10-12", "month")).toBe("2024-10-12");
+    expect(historyStart("2020-01-01", "2026-10-12", "week")).toBe("2020-01-01");
+  });
+});
+
+describe("estimateAccuracy", () => {
+  const e = (effortMinutes: number, actualMinutes: number) => ({ title: "t", effortMinutes, actualMinutes });
+
+  it("takes the median of actual over estimate and the share within 1.25 times either way", () => {
+    // 比は 0.5, 0.8, 1, 1.25, 3
+    expect(estimateAccuracy([e(60, 30), e(60, 48), e(60, 60), e(60, 75), e(60, 180)])).toEqual({ count: 5, medianRatio: 1, withinRate: 60 });
+  });
+
+  it("returns null without estimates", () => {
+    expect(estimateAccuracy([])).toBeNull();
+  });
+});
+
+describe("seededRandom", () => {
+  it("repeats the same sequence for the same seed", () => {
+    const a = seededRandom(1);
+    const b = seededRandom(1);
+    const xs = Array.from({ length: 5 }, a);
+    expect(Array.from({ length: 5 }, b)).toEqual(xs);
+    expect(xs.every((x) => x >= 0 && x < 1)).toBe(true);
+  });
+});
+
+describe("Monte Carlo forecast", () => {
+  it("counts the weeks until the items are done", () => {
+    // 毎週2件なら5件は3週目に終わる
+    expect(new Set(forecastWeeks([2, 2], 5, seededRandom(1), 100))).toEqual(new Set([3]));
+  });
+
+  it("spreads the weeks when the weekly throughput varies", () => {
+    const weeks = forecastWeeks([0, 4], 4, seededRandom(1), 1000)!;
+    expect(weeks[0]).toBe(1);
+    expect(quantile(weeks, 0.5)).toBeGreaterThan(1);
+    expect(weeks).toEqual([...weeks].sort((a, b) => a - b));
+  });
+
+  it("gives up on trials that do not finish within ten years", () => {
+    const weeks = forecastWeeks([0, 0, 0, 1], 200, seededRandom(1), 100)!;
+    expect(weeks.at(-1)).toBe(Infinity);
+  });
+
+  it("cannot forecast when no week finished anything", () => {
+    expect(forecastWeeks([0, 0], 1, seededRandom(1))).toBeNull();
+  });
+
+  it("sums the items done over the weeks", () => {
+    expect(new Set(forecastItems([2], 3, seededRandom(1), 50))).toEqual(new Set([6]));
+    expect(new Set(forecastItems([1, 3], 2, seededRandom(1), 1000))).toEqual(new Set([2, 4, 6]));
+    expect(forecastItems([], 3, seededRandom(1))).toEqual([]);
+  });
+});
+
+describe("quantile", () => {
+  it("takes the value at or below which the share of trials falls", () => {
+    const sorted = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    expect([0.15, 0.5, 0.85, 0.95, 1].map((p) => quantile(sorted, p))).toEqual([2, 5, 9, 10, 10]);
   });
 });

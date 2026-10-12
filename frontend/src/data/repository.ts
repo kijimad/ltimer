@@ -12,6 +12,14 @@ export interface LeadTimePercentiles {
   globalP85: number;
 }
 
+/** 過去の DONE のリードタイムのパーセンタイル (日) */
+export interface LeadTimePace {
+  p50: number;
+  p70: number;
+  p85: number;
+  p95: number;
+}
+
 export interface LeadTimeHistogram {
   /** period と、ビンのラベルごとの件数 */
   data: Record<string, string | number>[];
@@ -68,6 +76,12 @@ export interface Bucket {
   count: number;
 }
 
+export interface Estimate {
+  title: string;
+  effortMinutes: number;
+  actualMinutes: number;
+}
+
 export interface WeekdayHourMinutes {
   /** 月曜を 0 とする */
   weekday: number;
@@ -96,7 +110,9 @@ export interface TaskRepository {
   /** 範囲内に触ったタスク。リードタイムの降順 */
   inRange(startedAt: string): Task[];
   agingTodos(startedAt: string, asOf: string): { title: string; days: number }[];
-  alertTodos(startedAt: string, thresholdDays: number): Pick<Task, "title" | "file" | "lead_time_days">[];
+  /** asOf までの全期間の DONE から。DONE が少なく分布とみなせなければ null */
+  leadTimePace(asOf: string): LeadTimePace | null;
+  alertTodos(startedAt: string, asOf: string, thresholdDays: number): { title: string; file: string; days: number }[];
   fileSummary(startedAt: string): FileSummaryRow[];
   throughputByPeriod(startedAt: string, unit: TimeUnit): PeriodCount[];
   leadTimePercentiles(startedAt: string, asOf: string, unit: TimeUnit): LeadTimePercentiles;
@@ -110,6 +126,10 @@ export interface TaskRepository {
   queueTimeHistogram(startedAt: string): Bucket[];
   interruptionsByPeriod(startedAt: string, unit: TimeUnit): PeriodCount[];
   focusBlockHistogram(startedAt: string): Bucket[];
+  /** 範囲内に終えた DONE 1件あたりの作業時間 */
+  taskSizeHistogram(startedAt: string): Bucket[];
+  /** 範囲内に終えた DONE のうち、:Effort: で見積もったもの */
+  estimates(startedAt: string): Estimate[];
   /** 各セッションの作業時間を開始した曜日・時間帯に数える */
   workByWeekdayHour(startedAt: string): WeekdayHourMinutes[];
   workByProject(startedAt: string, unit: TimeUnit): ProjectMix;
