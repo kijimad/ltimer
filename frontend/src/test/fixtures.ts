@@ -69,6 +69,8 @@ export const TASKS_DB: TestData = {
       file: "20240101T120000--project__web.org",
       status: "DONE",
       closed_at: "2024-02-20T08:00:00Z",
+      effort_minutes: null,
+      deadline: null,
       clocks: [
         { start: "2024-02-10T00:00:00Z", end: "2024-02-10T01:00:00Z", minutes: 60 },
         { start: "2024-02-20T07:00:00Z", end: "2024-02-20T08:00:00Z", minutes: 60 },
@@ -79,6 +81,8 @@ export const TASKS_DB: TestData = {
       file: "20240101T120000--project__web.org",
       status: "TODO",
       closed_at: null,
+      effort_minutes: null,
+      deadline: null,
       clocks: [{ start: "2024-02-25T01:00:00Z", end: "2024-02-25T02:00:00Z", minutes: 60 }],
     },
   ],

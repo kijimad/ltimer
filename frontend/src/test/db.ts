@@ -19,7 +19,7 @@ export interface TestData {
 const utc = (local: string) => new Date(local.replace(" ", "T")).toISOString();
 
 /** 表示用の Task を DB の行にする。clocks がなければ着手と最終作業の2点で作業時間を表す */
-export function fromTasks(tasks: Task[]): TaskRow[] {
+export function fromTasks(tasks: (Task & Partial<Pick<TaskRow, "effort_minutes" | "deadline">>)[]): TaskRow[] {
   return tasks.map((t) => {
     const clocks = t.clocks.length > 0
       ? t.clocks
@@ -29,6 +29,8 @@ export function fromTasks(tasks: Task[]): TaskRow[] {
       file: t.file,
       status: t.status,
       closed_at: t.closed_at && utc(t.closed_at),
+      effort_minutes: t.effort_minutes ?? null,
+      deadline: t.deadline ?? null,
       clocks: clocks.map((c) => ({ start: utc(c.start), end: utc(c.end), minutes: c.minutes })),
     };
   });

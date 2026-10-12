@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toUtc, parseTasks, parseActivities, parseTitle, parsePublishedFromGitLog, parseDraft, WORKFLOW_FILE } from "./org.ts";
+import { toUtc, parseDuration, parseTasks, parseActivities, parseTitle, parsePublishedFromGitLog, parseDraft, WORKFLOW_FILE } from "./org.ts";
 
 describe("toUtc", () => {
   it("treats org timestamps as JST", () => {
@@ -8,6 +8,21 @@ describe("toUtc", () => {
 
   it("moves to the previous UTC day before 09:00 JST", () => {
     expect(toUtc("2026-10-11", "08:59")).toBe("2026-10-10T23:59:00Z");
+  });
+});
+
+describe("parseDuration", () => {
+  it("reads H:MM, H:MM:SS and org duration units as minutes", () => {
+    expect(parseDuration("20:00")).toBe(1200);
+    expect(parseDuration("00:30")).toBe(30);
+    expect(parseDuration("1:00:30")).toBe(60.5);
+    expect(parseDuration("1d3h5min")).toBe(1440 + 180 + 5);
+    expect(parseDuration("1h 30min")).toBe(90);
+  });
+
+  it("returns null for what it cannot read", () => {
+    expect(parseDuration("soon")).toBeNull();
+    expect(parseDuration("3h later")).toBeNull();
   });
 });
 
@@ -37,6 +52,28 @@ describe("parseTasks", () => {
   it("reads Japanese weekdays and CLOSED", () => {
     expect(tasks[1].closed_at).toBe("2026-10-11T03:00:00Z");
     expect(tasks[1].clocks).toEqual([{ start: "2026-10-11T02:00:00Z", end: "2026-10-11T02:25:00Z", minutes: 25 }]);
+  });
+
+  it("reads Effort and DEADLINE of each heading, also when DEADLINE shares the CLOSED line", () => {
+    const text = [
+      "* DONE 見積もりあり",
+      "CLOSED: [2026-10-11 日 12:00] DEADLINE: <2026-10-12 月>",
+      ":PROPERTIES:",
+      ":Effort:   2:00",
+      ":END:",
+      "CLOCK: [2026-10-11 日 11:00]--[2026-10-11 日 11:25] =>  0:25",
+      "* TODO 見積もりなし",
+      "DEADLINE: <2026-10-20 火>",
+      "CLOCK: [2026-10-11 日 13:00]--[2026-10-11 日 13:25] =>  0:25",
+      "* TODO 空白つきの見積もり",
+      ":Effort: 1h 30min",
+      "CLOCK: [2026-10-11 日 14:00]--[2026-10-11 日 14:25] =>  0:25",
+    ].join("\n");
+    expect(parseTasks("f.org", text).map((t) => [t.title, t.closed_at, t.effort_minutes, t.deadline])).toEqual([
+      ["見積もりあり", "2026-10-11T03:00:00Z", 120, "2026-10-12"],
+      ["見積もりなし", null, null, "2026-10-20"],
+      ["空白つきの見積もり", null, 90, null],
+    ]);
   });
 
   it("ignores the workflow file", () => {

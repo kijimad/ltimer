@@ -17,7 +17,9 @@ SELECT
   CAST(julianday(substr(max(c.end), 1, 10)) - julianday(substr(min(c.start), 1, 10)) AS INTEGER) AS lead_time_days,
   sum(c.minutes) AS total_minutes,
   count(*) AS clock_count,
-  CASE WHEN t.status = 'TODO' THEN NULL ELSE substr(coalesce(local_time(t.closed_at), max(c.end)), 1, 10) END AS completed_date
+  CASE WHEN t.status = 'TODO' THEN NULL ELSE substr(coalesce(local_time(t.closed_at), max(c.end)), 1, 10) END AS completed_date,
+  t.effort_minutes,
+  t.deadline
 FROM tasks t
 JOIN clocks_local c ON c.task_id = t.id
 GROUP BY t.id;
@@ -47,7 +49,7 @@ FROM (
 )
 WHERE prev_end IS NOT NULL;
 
--- 同じタスクのセッションを、間隔が 60 分 (summary.ts の RESUME_GAP_MINUTES) 未満ならつなげた集中ブロック。
+-- 同じタスクのセッションを、間隔が 60 分 (metricDefs.ts の RESUME_GAP_MINUTES) 未満ならつなげた集中ブロック。
 -- 間隔も作業時間も、重なりを二重に数えないよう、それまでで最も遅い終了から測る
 CREATE TEMP TABLE focus_blocks AS
 SELECT task_id, min(start) AS start, max(end) AS end, sum(minutes) AS minutes, count(*) AS sessions

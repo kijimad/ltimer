@@ -10,7 +10,11 @@ CREATE TABLE tasks (
   title TEXT NOT NULL,
   file TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('TODO', 'DONE', 'CLOSE')),
-  closed_at TEXT
+  closed_at TEXT,
+  -- :Effort: の見積もり (分)
+  effort_minutes INTEGER,
+  -- DEADLINE は時点ではなく暦日 (YYYY-MM-DD)
+  deadline TEXT
 );
 
 CREATE TABLE task_clocks (

@@ -9,7 +9,7 @@ import type { TaskRow } from "./rows.ts";
 const ALL = "2000-01-01";
 
 function rawTask(overrides: Partial<TaskRow>): TaskRow {
-  return { title: "t", file: "f.org", status: "DONE", closed_at: null, clocks: [], ...overrides };
+  return { title: "t", file: "f.org", status: "DONE", closed_at: null, effort_minutes: null, deadline: null, clocks: [], ...overrides };
 }
 
 describe("views over tasks", () => {

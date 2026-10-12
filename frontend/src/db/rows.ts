@@ -3,7 +3,7 @@ import type { Database, SqlValue } from "sql.js";
 
 export const TABLES = {
   meta: ["key", "value"],
-  tasks: ["id", "title", "file", "status", "closed_at"],
+  tasks: ["id", "title", "file", "status", "closed_at", "effort_minutes", "deadline"],
   task_clocks: ["task_id", "start", "end", "minutes"],
   activity_clocks: ["title", "start", "end", "minutes"],
   drafts: ["file", "title", "created", "published", "lead_time_days", "status"],
@@ -12,7 +12,7 @@ export const TABLES = {
 /** 開いたときに閲覧者のタイムゾーンで作る一時テーブル */
 export const LOCAL_TABLES = {
   clocks_local: ["seq", "task_id", "start", "end", "minutes"],
-  tasks_local: ["id", "title", "file", "status", "first_clock_in", "last_clock_out", "closed_at", "lead_time_days", "total_minutes", "clock_count", "completed_date"],
+  tasks_local: ["id", "title", "file", "status", "first_clock_in", "last_clock_out", "closed_at", "lead_time_days", "total_minutes", "clock_count", "completed_date", "effort_minutes", "deadline"],
   daily_work: ["date", "title", "minutes"],
   activity_clocks_local: ["title", "start", "end", "minutes"],
   activity_daily: ["date", "title", "minutes"],
@@ -25,7 +25,15 @@ export const LOCAL_TABLES = {
 /** 時点は UTC の ISO 8601、日付は YYYY-MM-DD */
 export interface Records {
   meta: { key: string; value: string };
-  tasks: { id: number; title: string; file: string; status: "TODO" | "DONE" | "CLOSE"; closed_at: string | null };
+  tasks: {
+    id: number;
+    title: string;
+    file: string;
+    status: "TODO" | "DONE" | "CLOSE";
+    closed_at: string | null;
+    effort_minutes: number | null;
+    deadline: string | null;
+  };
   task_clocks: { task_id: number; start: string; end: string; minutes: number };
   activity_clocks: { title: string; start: string; end: string; minutes: number };
   drafts: {
