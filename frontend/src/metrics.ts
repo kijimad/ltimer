@@ -198,7 +198,7 @@ export function processBehavior(values: (number | null)[], complete: boolean[]):
   return { limits, signals };
 }
 
-/** 限界線や予測にはある程度の期間が要るので、範囲が短くても週なら26週、月なら24ヶ月はさかのぼる */
+/** 限界線にはある程度の期間が要るので、範囲が短くても週なら26週、月なら24ヶ月はさかのぼる */
 export function historyStart(startedAt: string, asOf: string, unit: TimeUnit): string {
   const history = unit === "week" ? addDays(asOf, -7 * 26) : addMonths(asOf, -24);
   return [startedAt, history].sort()[0];
@@ -213,50 +213,4 @@ export function estimateAccuracy(estimates: Estimate[]): { count: number; median
   const ratios = estimates.map((e) => e.actualMinutes / e.effortMinutes);
   const within = ratios.filter((r) => r >= 1 / ESTIMATE_TOLERANCE && r <= ESTIMATE_TOLERANCE).length;
   return { count: ratios.length, medianRatio: median(ratios), withinRate: (100 * within) / ratios.length };
-}
-
-/** 再現できる乱数 (mulberry32)。同じ seed なら同じ予測になり、表示のたびに数字が揺れない */
-export function seededRandom(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-export const FORECAST_TRIALS = 10000;
-/** 完了の少ない週ばかりだと終わらない試行があるので、ここで打ち切る */
-export const MAX_FORECAST_WEEKS = 520;
-
-/**
- * 過去の週ごとの完了数を引き直して、items 件を終えるまでの週数を試行ごとに並べる (昇順)。どの週も 0 件なら null。
- * MAX_FORECAST_WEEKS で終わらなかった試行は Infinity にする
- */
-export function forecastWeeks(weekly: number[], items: number, random: () => number, trials = FORECAST_TRIALS): number[] | null {
-  if (!weekly.some((n) => n > 0)) return null;
-  const pick = () => weekly[Math.floor(random() * weekly.length)];
-  return Array.from({ length: trials }, () => {
-    let done = 0;
-    let weeks = 0;
-    while (done < items && weeks < MAX_FORECAST_WEEKS) {
-      done += pick();
-      weeks++;
-    }
-    return done < items ? Infinity : weeks;
-  }).sort((a, b) => a - b);
-}
-
-/** 過去の週ごとの完了数を引き直して、weeks 週で終える件数を試行ごとに並べる (昇順) */
-export function forecastItems(weekly: number[], weeks: number, random: () => number, trials = FORECAST_TRIALS): number[] {
-  if (weekly.length === 0) return [];
-  const pick = () => weekly[Math.floor(random() * weekly.length)];
-  return Array.from({ length: trials }, () => Array.from({ length: weeks }, pick).reduce((s, n) => s + n, 0)).sort((a, b) => a - b);
-}
-
-/** 昇順の試行結果のうち、割合 p (0〜1) の試行がこの値以下になる値 */
-export function quantile(sorted: number[], p: number): number {
-  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(p * sorted.length) - 1))];
 }

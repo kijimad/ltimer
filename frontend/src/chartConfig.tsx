@@ -6,7 +6,6 @@ import { ScatterChart } from "./components/charts/ScatterChart.tsx";
 import { WipTrend } from "./components/charts/WipTrend.tsx";
 import { ThroughputChart } from "./components/charts/ThroughputChart.tsx";
 import { ProcessBehaviorChart } from "./components/charts/ProcessBehaviorChart.tsx";
-import { ForecastChart } from "./components/charts/ForecastChart.tsx";
 import { TaskSizeChart } from "./components/charts/TaskSizeChart.tsx";
 import { EstimateChart } from "./components/charts/EstimateChart.tsx";
 import { HistogramChart } from "./components/charts/HistogramChart.tsx";
@@ -133,12 +132,6 @@ export const CHART_GROUPS: ChartGroup[] = [
         title: "Process Behavior Chart",
         desc: "期間ごとの完了数と平均リードタイムに、XmR の自然な変動の限界線 (中央値 ± 3.14 × 移動範囲の中央値) を引く。変化の兆しは、赤=限界線の外、橙=4期間のうち3期間が限界線寄り、黄=中央値の同じ側に8期間。白抜きは端の欠けた期間で、限界線の計算に入れない。範囲が短くても週なら26週、月なら24ヶ月さかのぼる",
         render: ({ repo, startedAt, asOf, unit }) => <ProcessBehaviorChart repo={repo} startedAt={startedAt} asOf={asOf} unit={unit} />,
-      },
-      {
-        key: "forecast",
-        title: "Monte Carlo Forecast",
-        desc: "過去の週ごとの完了数を引き直す試行を1万回くり返し、範囲内に触ったTODOをすべて終えるまでの週数と、次の4週で終える件数を確率つきで予測する",
-        render: ({ repo, startedAt, asOf }) => <ForecastChart repo={repo} startedAt={startedAt} asOf={asOf} />,
       },
       {
         key: "cfd",

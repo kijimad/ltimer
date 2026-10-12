@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   summaryPeriods, scaleFrom, bandOf, dailyRhythm, predictedLeadTime, paceBand, isCompletePeriod, processBehavior,
-  historyStart, estimateAccuracy, seededRandom, forecastWeeks, forecastItems, quantile,
+  historyStart, estimateAccuracy,
 } from "./metrics.ts";
 
 describe("summaryPeriods", () => {
@@ -193,51 +193,5 @@ describe("estimateAccuracy", () => {
 
   it("returns null without estimates", () => {
     expect(estimateAccuracy([])).toBeNull();
-  });
-});
-
-describe("seededRandom", () => {
-  it("repeats the same sequence for the same seed", () => {
-    const a = seededRandom(1);
-    const b = seededRandom(1);
-    const xs = Array.from({ length: 5 }, a);
-    expect(Array.from({ length: 5 }, b)).toEqual(xs);
-    expect(xs.every((x) => x >= 0 && x < 1)).toBe(true);
-  });
-});
-
-describe("Monte Carlo forecast", () => {
-  it("counts the weeks until the items are done", () => {
-    // 毎週2件なら5件は3週目に終わる
-    expect(new Set(forecastWeeks([2, 2], 5, seededRandom(1), 100))).toEqual(new Set([3]));
-  });
-
-  it("spreads the weeks when the weekly throughput varies", () => {
-    const weeks = forecastWeeks([0, 4], 4, seededRandom(1), 1000)!;
-    expect(weeks[0]).toBe(1);
-    expect(quantile(weeks, 0.5)).toBeGreaterThan(1);
-    expect(weeks).toEqual([...weeks].sort((a, b) => a - b));
-  });
-
-  it("gives up on trials that do not finish within ten years", () => {
-    const weeks = forecastWeeks([0, 0, 0, 1], 200, seededRandom(1), 100)!;
-    expect(weeks.at(-1)).toBe(Infinity);
-  });
-
-  it("cannot forecast when no week finished anything", () => {
-    expect(forecastWeeks([0, 0], 1, seededRandom(1))).toBeNull();
-  });
-
-  it("sums the items done over the weeks", () => {
-    expect(new Set(forecastItems([2], 3, seededRandom(1), 50))).toEqual(new Set([6]));
-    expect(new Set(forecastItems([1, 3], 2, seededRandom(1), 1000))).toEqual(new Set([2, 4, 6]));
-    expect(forecastItems([], 3, seededRandom(1))).toEqual([]);
-  });
-});
-
-describe("quantile", () => {
-  it("takes the value at or below which the share of trials falls", () => {
-    const sorted = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    expect([0.15, 0.5, 0.85, 0.95, 1].map((p) => quantile(sorted, p))).toEqual([2, 5, 9, 10, 10]);
   });
 });
