@@ -1,9 +1,9 @@
 import type { Database, SqlValue } from "sql.js";
-import type { Task, TaskClock, TimeUnit, DailyWorkEntry, DraftEntry } from "../types/index.ts";
+import type { Task, TaskClock, TimeUnit, DailyWorkEntry, NoteEntry } from "../types/index.ts";
 import { rows } from "./database.ts";
 import { daysBetween } from "../dates.ts";
 import { RESUME_GAP_MINUTES, TASK_METRICS, FLOW_METRICS, leadTimePercentile, series, evaluate, calendarPeriods } from "./metricDefs.ts";
-import type { FileSummaryRow, WeekdayHourMinutes, LeadTimePace, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
+import type { FileSummaryRow, NotesByStatus, NoteTagSeries, WeekdayHourMinutes, LeadTimePace, LeadTimePercentiles, LeadTimeHistogram, WipPoint, FlowPoint, BurnPoint, CashFlowPoint, NetProfitPoint, Streak } from "../data/repository.ts";
 
 /** Tasks ページの対象: 範囲内 (?1 以降) に触ったタスク。並びは表示の基準 (リードタイムの降順) */
 const FT = `ft AS (
@@ -358,24 +358,52 @@ export function activityStreaks(db: Database, startedAt: string, asOf: string): 
   );
 }
 
-// --- Draft ---
+// --- Notes ---
 
-/** 範囲内に作成または公開された記事 */
-export function draftsInRange(db: Database, startedAt: string): DraftEntry[] {
+export const NO_TAG = "タグなし";
+
+export function notesInRange(db: Database, startedAt: string): NoteEntry[] {
+  return q<Omit<NoteEntry, "tags"> & { tags: string | null }>(
+    db,
+    // group_concat は並びを約束しないので、先に並べる
+    `SELECT n.file, n.title, n.created, n.published, n.lead_time_days, n.status,
+       (SELECT group_concat(tag, ' ') FROM (SELECT tag FROM note_tags t WHERE t.file = n.file ORDER BY t.rowid)) AS tags
+     FROM notes n WHERE n.created >= ?1 OR n.published >= ?1 OR n.status = 'draft' ORDER BY n.created DESC, n.file`,
+    [startedAt],
+  ).map((n) => ({ ...n, tags: n.tags ? n.tags.split(" ") : [] }));
+}
+
+export function notesCreatedByStatus(db: Database, startedAt: string, unit: TimeUnit): NotesByStatus[] {
   return q(
     db,
-    `SELECT file, title, created, published, lead_time_days, status FROM drafts
-     WHERE created >= ?1 OR published >= ?1 ORDER BY coalesce(lead_time_days, 0) DESC, rowid`,
+    `SELECT ${calendarPeriod(unit)} AS period,
+       coalesce(sum(n.status = 'draft'), 0) AS draft, coalesce(sum(n.status = 'published'), 0) AS published
+     FROM calendar c LEFT JOIN notes n ON n.created = c.date WHERE c.date >= ?1 GROUP BY period ORDER BY period`,
     [startedAt],
   );
 }
 
-export function draftAges(db: Database, startedAt: string, asOf: string): { title: string; file: string; days: number }[] {
-  return q(
+/** 列の名前はタグに印を付けて、period や「タグなし」という名前のタグとぶつからないようにする */
+export function notesCreatedByTag(db: Database, startedAt: string, unit: TimeUnit): { data: Record<string, string | number>[]; tags: NoteTagSeries[] } {
+  const cells = q<{ period: string; tag: string | null; n: number }>(
     db,
-    `SELECT title, file, CAST(julianday(?2) - julianday(created) AS INTEGER) AS days FROM drafts
-     WHERE status = 'draft' AND (created >= ?1 OR published >= ?1)
-     ORDER BY days DESC, coalesce(lead_time_days, 0) DESC, rowid`,
-    [startedAt, asOf],
+    `SELECT ${calendarPeriod(unit)} AS period,
+       (SELECT tag FROM note_tags t WHERE t.file = n.file ORDER BY t.rowid LIMIT 1) AS tag, count(*) AS n
+     FROM notes n JOIN calendar c ON c.date = n.created WHERE n.created >= ?1 GROUP BY period, tag`,
+    [startedAt],
   );
+  const series = (tag: string | null): NoteTagSeries => (tag === null ? { key: "no-tag", name: NO_TAG } : { key: `tag:${tag}`, name: tag });
+  const totals = new Map<string, { series: NoteTagSeries; n: number }>();
+  for (const c of cells) {
+    const s = series(c.tag);
+    totals.set(s.key, { series: s, n: (totals.get(s.key)?.n ?? 0) + c.n });
+  }
+  const tags = [...totals.values()]
+    .sort((a, b) => Number(a.series.key === "no-tag") - Number(b.series.key === "no-tag") || b.n - a.n || (a.series.name < b.series.name ? -1 : 1))
+    .map((t) => t.series);
+  const byPeriod = new Map(
+    calendarPeriods(db, startedAt, unit).map(({ period }) => [period, Object.fromEntries([["period", period], ...tags.map((t) => [t.key, 0])])]),
+  );
+  for (const c of cells) byPeriod.get(c.period)![series(c.tag).key] = c.n;
+  return { data: [...byPeriod.values()], tags };
 }

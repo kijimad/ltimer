@@ -5,7 +5,7 @@ import { attachViews } from "../db/database.ts";
 import { createSqlRepository } from "../db/sqlRepository.ts";
 import type { Repository } from "../data/repository.ts";
 import type { Task, ActivityDailyEntry } from "../types/index.ts";
-import { insert, type TaskRow, type ClockRow, type DraftRow } from "../db/rows.ts";
+import { insert, type TaskRow, type ClockRow, type NoteRow } from "../db/rows.ts";
 
 const SQL = await initSqlJs({ locateFile: (f) => `node_modules/sql.js/dist/${f}` });
 
@@ -13,7 +13,7 @@ export interface TestData {
   generatedAt: string;
   tasks?: TaskRow[];
   activities?: { title: string; clocks: ClockRow[] }[];
-  drafts?: DraftRow[];
+  notes?: NoteRow[];
 }
 
 const utc = (local: string) => new Date(local.replace(" ", "T")).toISOString();
@@ -44,7 +44,7 @@ export function fromDaily(daily: ActivityDailyEntry[]): { title: string; clocks:
 }
 
 /** 本番と同じ schema.sql から DB を作り、フィクスチャを入れる */
-export function createTestDatabase({ generatedAt, tasks = [], activities = [], drafts = [] }: TestData): Database {
+export function createTestDatabase({ generatedAt, tasks = [], activities = [], notes = [] }: TestData): Database {
   const db = new SQL.Database();
   db.exec(schema);
   insert(db, "meta", { key: "generated_at", value: generatedAt });
@@ -55,7 +55,10 @@ export function createTestDatabase({ generatedAt, tasks = [], activities = [], d
   for (const a of activities) {
     for (const c of a.clocks) insert(db, "activity_clocks", { title: a.title, ...c });
   }
-  for (const d of drafts) insert(db, "drafts", d);
+  for (const { tags, ...n } of notes) {
+    insert(db, "notes", n);
+    for (const tag of tags) insert(db, "note_tags", { file: n.file, tag });
+  }
   return attachViews(db);
 }
 

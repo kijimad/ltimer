@@ -1,5 +1,5 @@
 // org-roam のファイルから DB の行を作る。ファイルや git には触れない純関数だけを置く
-import type { ClockRow, TaskRow, DraftRow } from "../src/db/rows.ts";
+import type { ClockRow, TaskRow, NoteRow } from "../src/db/rows.ts";
 
 // Python の \w と同じく、日本語の曜日やタグにも一致させる
 const W = "[\\p{L}\\p{N}_]";
@@ -15,6 +15,17 @@ const EFFORT_RE = /^\s*:Effort:\s+(.+?)\s*$/iu;
 const DURATION_UNITS: Record<string, number> = { min: 1, h: 60, d: 1440, w: 10080 };
 const TITLE_RE = /^#\+title:\s*(.+)/iu;
 const FILENAME_TS_RE = /^(\d{4})(\d{2})(\d{2})T?(\d{2})(\d{2})(\d{2})/;
+const FILENAME_TAGS_RE = /__([^.]+)\.org$/;
+const DRAFT_TAG = "draft";
+
+/** denote の改名はタイトルやタグだけを変えるので、タイムスタンプが同じなら同じメモ */
+function noteId(file: string): string | null {
+  return FILENAME_TS_RE.exec(file)?.[0] ?? null;
+}
+
+function filenameTags(file: string): string[] {
+  return [...new Set(FILENAME_TAGS_RE.exec(file)?.[1].split("_").filter((t) => t !== "") ?? [])];
+}
 const ROTATION_SUFFIX_RE = /\s+\d+$/u;
 
 export const WORKFLOW_FILE = "20210904124352-workflow.org";
@@ -113,10 +124,7 @@ export function parseTitle(text: string): string | null {
   return null;
 }
 
-/**
- * git log --diff-filter=R --name-status --format=%aI の出力から、__draft_ を外した改名の日付を集める。
- * 同じファイルが何度も改名されていれば、新しい順に並ぶログの最初 (最新) を使う
- */
+/** draft タグを外した改名の日付をメモの ID ごとに集める。ログは新しい順なので最初 (最新) を使う */
 export function parsePublishedFromGitLog(log: string): Map<string, string> {
   const published = new Map<string, string>();
   let date: string | null = null;
@@ -129,24 +137,25 @@ export function parsePublishedFromGitLog(log: string): Map<string, string> {
     }
     if (line.startsWith("R") && line.includes("\t")) {
       const [, oldName, newName] = line.split("\t");
-      if (newName !== undefined && oldName.includes("__draft_") && !newName.includes("__draft_") && date && !published.has(newName)) {
-        published.set(newName, date);
+      const id = newName === undefined ? null : noteId(newName);
+      if (id && date && filenameTags(oldName).includes(DRAFT_TAG) && !filenameTags(newName).includes(DRAFT_TAG) && !published.has(id)) {
+        published.set(id, date);
       }
     }
   }
   return published;
 }
 
-export function parseDraft(file: string, text: string, published: Map<string, string>): DraftRow | null {
+export function parseNote(file: string, text: string, published: Map<string, string>): NoteRow | null {
   const ts = FILENAME_TS_RE.exec(file);
   if (!ts) return null;
   const created = `${ts[1]}-${ts[2]}-${ts[3]}`;
   const title = parseTitle(text) ?? file;
-  if (file.includes("__draft_")) {
-    return { file, title, created, published: null, lead_time_days: null, status: "draft" };
-  }
-  const pub = published.get(file);
-  if (pub === undefined) return null;
+  const allTags = filenameTags(file);
+  const tags = allTags.filter((t) => t !== DRAFT_TAG);
+  if (allTags.includes(DRAFT_TAG)) return { file, title, created, published: null, lead_time_days: null, status: "draft", tags };
+  const pub = published.get(ts[0]);
+  if (pub === undefined) return { file, title, created, published: created, lead_time_days: null, status: "published", tags };
   const days = Math.round((Date.parse(pub) - Date.parse(created)) / 86400000);
-  return { file, title, created, published: pub, lead_time_days: days, status: "published" };
+  return { file, title, created, published: pub, lead_time_days: days, status: "published", tags };
 }

@@ -134,23 +134,27 @@ export const FLOW_METRICS = {
 } satisfies Record<string, MetricDef>;
 
 // 公開日がわかるので、過去の期間の終点で下書きだったものを再現できる
-const OPEN_AT_END = "FROM drafts WHERE created <= ?2 AND (published IS NULL OR published > ?2)";
+const OPEN_AT_END = "FROM notes WHERE created <= ?2 AND (published IS NULL OR published > ?2)";
 
-export const DRAFT_METRICS = {
+export const NOTE_METRICS = {
+  createCount: {
+    key: "create-count", label: "作成数", desc: "ファイル名のタイムスタンプで数えたメモの数", unit: "件", higherIsBetter: true,
+    sql: "SELECT count(*) AS v FROM notes WHERE created BETWEEN ?1 AND ?2",
+  },
   publishCount: {
-    key: "publish-count", label: "公開数", desc: "公開した記事の数", unit: "件", higherIsBetter: true,
-    sql: "SELECT count(*) AS v FROM drafts WHERE published BETWEEN ?1 AND ?2",
+    key: "publish-count", label: "公開数", desc: "公開したメモの数。下書きを経ないメモは作成日に数える", unit: "件", higherIsBetter: true,
+    sql: "SELECT count(*) AS v FROM notes WHERE published BETWEEN ?1 AND ?2",
   },
   openDrafts: {
-    key: "open-drafts", label: "未公開 Draft", desc: "現時点で draft タグが付いた記事", unit: "件", higherIsBetter: false,
+    key: "open-drafts", label: "未公開 Draft", desc: "期間の終わりに draft タグが付いていたメモ", unit: "件", higherIsBetter: false,
     sql: `SELECT count(*) AS v ${OPEN_AT_END}`,
   },
   publishLeadTime: {
-    key: "publish-lead-time", label: "公開リードタイム", desc: "公開した記事の中央値", unit: "日", higherIsBetter: false,
-    sql: "SELECT percentile(lead_time_days, 50) AS v FROM drafts WHERE published BETWEEN ?1 AND ?2 AND lead_time_days IS NOT NULL",
+    key: "publish-lead-time", label: "公開リードタイム", desc: "下書きを経たメモの、作成から draft タグを外すまでの日数の中央値", unit: "日", higherIsBetter: false,
+    sql: "SELECT percentile(lead_time_days, 50) AS v FROM notes WHERE published BETWEEN ?1 AND ?2 AND lead_time_days IS NOT NULL",
   },
   oldestDraft: {
-    key: "oldest-draft", label: "最古 Draft", desc: "現時点で最も古い下書きの経過日数", unit: "日", higherIsBetter: false,
+    key: "oldest-draft", label: "最古 Draft", desc: "期間の終わりに最も古い下書きの経過日数", unit: "日", higherIsBetter: false,
     sql: `SELECT CAST(max(julianday(?2) - julianday(created)) AS INTEGER) AS v ${OPEN_AT_END}`,
   },
 } satisfies Record<string, MetricDef>;

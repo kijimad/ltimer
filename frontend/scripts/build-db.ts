@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import initSqlJs from "sql.js";
-import { parseTasks, parseActivities, parseDraft, parsePublishedFromGitLog, WORKFLOW_FILE } from "./org.ts";
+import { parseTasks, parseActivities, parseNote, parsePublishedFromGitLog, WORKFLOW_FILE } from "./org.ts";
 import { insert } from "../src/db/rows.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -30,7 +30,7 @@ const texts = new Map(files.map((f) => [f, read(f)]));
 const tasks = files.flatMap((f) => parseTasks(f, texts.get(f)!));
 const activities = texts.has(WORKFLOW_FILE) ? parseActivities(texts.get(WORKFLOW_FILE)!) : [];
 const published = parsePublishedFromGitLog(gitRenames(roamDir));
-const drafts = files.map((f) => parseDraft(f, texts.get(f)!, published)).filter((d) => d !== null);
+const notes = files.map((f) => parseNote(f, texts.get(f)!, published)).filter((n) => n !== null);
 
 const SQL = await initSqlJs();
 const db = new SQL.Database();
@@ -44,7 +44,10 @@ tasks.forEach(({ clocks, ...t }, id) => {
 for (const a of activities) {
   for (const c of a.clocks) insert(db, "activity_clocks", { title: a.title, ...c });
 }
-for (const d of drafts) insert(db, "drafts", d);
+for (const { tags, ...n } of notes) {
+  insert(db, "notes", n);
+  for (const tag of tags) insert(db, "note_tags", { file: n.file, tag });
+}
 db.exec("COMMIT");
 writeFileSync(output, db.export());
-console.log(`Wrote ${output} (${tasks.length} tasks, ${activities.length} activities, ${drafts.length} drafts)`);
+console.log(`Wrote ${output} (${tasks.length} tasks, ${activities.length} activities, ${notes.length} notes)`);

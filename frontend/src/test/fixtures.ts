@@ -1,4 +1,5 @@
-import type { Task, DraftEntry } from "../types/index.ts";
+import type { Task } from "../types/index.ts";
+import type { NoteRow } from "../db/rows.ts";
 import type { TestData } from "./db.ts";
 
 export const TASKS: Task[] = [
@@ -88,7 +89,7 @@ export const TASKS_DB: TestData = {
   ],
 };
 
-export const DRAFT_ENTRIES: DraftEntry[] = [
+export const NOTE_ROWS: NoteRow[] = [
   {
     file: "20260301T120000--article__draft_essay.org",
     title: "Draft article",
@@ -96,6 +97,7 @@ export const DRAFT_ENTRIES: DraftEntry[] = [
     published: null,
     lead_time_days: null,
     status: "draft",
+    tags: ["essay"],
   },
   {
     file: "20260201T100000--published__essay.org",
@@ -104,10 +106,20 @@ export const DRAFT_ENTRIES: DraftEntry[] = [
     published: "2026-03-17",
     lead_time_days: 45,
     status: "published",
+    tags: ["essay"],
+  },
+  {
+    file: "20260310T090000--memo__permanent.org",
+    title: "Permanent memo",
+    created: "2026-03-10",
+    published: "2026-03-10",
+    lead_time_days: null,
+    status: "published",
+    tags: ["permanent"],
   },
 ];
 
-export const DRAFTS_DB: TestData = {
+export const NOTES_DB: TestData = {
   generatedAt: "2026-03-20T03:00:00Z",
-  drafts: DRAFT_ENTRIES,
+  notes: NOTE_ROWS,
 };

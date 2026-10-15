@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as sql from "./summary.ts";
 import { createTestDatabase, fromTasks, fromDaily } from "../test/db.ts";
 import { addDays } from "../dates.ts";
-import type { Task, DraftEntry, ActivityDailyEntry, TimeRange } from "../types/index.ts";
+import type { Task, ActivityDailyEntry, TimeRange } from "../types/index.ts";
+import type { NoteRow } from "./rows.ts";
 import type { Summary } from "../metrics.ts";
 
 const TODAY = "2024-03-01";
@@ -29,8 +30,8 @@ function task(overrides: Partial<Task & { deadline: string }>): Task & { deadlin
 const GENERATED = "2024-03-01T03:00:00Z";
 const taskSummary = (tasks: Task[], asOf: string, range: TimeRange) =>
   sql.taskSummary(createTestDatabase({ generatedAt: GENERATED, tasks: fromTasks(tasks) }), asOf, range);
-const draftSummary = (drafts: DraftEntry[], asOf: string, range: TimeRange) =>
-  sql.draftSummary(createTestDatabase({ generatedAt: GENERATED, drafts }), asOf, range);
+const noteSummary = (notes: NoteRow[], asOf: string, range: TimeRange) =>
+  sql.noteSummary(createTestDatabase({ generatedAt: GENERATED, notes }), asOf, range);
 const activitySummary = (daily: ActivityDailyEntry[], asOf: string, range: TimeRange) =>
   sql.activitySummary(
     createTestDatabase({ generatedAt: GENERATED, activities: fromDaily(daily) }),
@@ -38,8 +39,9 @@ const activitySummary = (daily: ActivityDailyEntry[], asOf: string, range: TimeR
     range,
   );
 
-function draft(overrides: Partial<DraftEntry>): DraftEntry {
-  return { file: "f.org", title: "d", created: "2024-01-01", published: null, lead_time_days: null, status: "draft", ...overrides };
+let noteSeq = 0;
+function note(overrides: Partial<NoteRow>): NoteRow {
+  return { file: `n${noteSeq++}.org`, title: "d", created: "2024-01-01", published: null, lead_time_days: null, status: "draft", tags: [], ...overrides };
 }
 
 const gauge = (s: Summary, key: string) => s.gauges.find((g) => g.key === key)!;
@@ -110,36 +112,48 @@ describe("taskSummary", () => {
   });
 });
 
-describe("draftSummary", () => {
+describe("noteSummary", () => {
   const entries = [
-    draft({ created: "2023-01-01", published: "2023-02-01", lead_time_days: 31, status: "published" }),
-    draft({ created: "2024-01-01" }),
-    draft({ created: "2024-01-10", published: "2024-02-20", lead_time_days: 41, status: "published" }),
+    note({ created: "2023-01-01", published: "2023-02-01", lead_time_days: 31, status: "published" }),
+    note({ created: "2024-01-01" }),
+    note({ created: "2024-01-10", published: "2024-02-20", lead_time_days: 41, status: "published" }),
   ];
 
   it("counts articles published in the range", () => {
-    const g = gauge(draftSummary(entries, TODAY, "1m"), "publish-count");
+    const g = gauge(noteSummary(entries, TODAY, "1m"), "publish-count");
     expect(g.value).toBe(1);
     expect(g.higherIsBetter).toBe(true);
   });
 
   it("counts drafts open at the end of each period", () => {
-    const g = gauge(draftSummary(entries, TODAY, "1m"), "open-drafts");
+    const g = gauge(noteSummary(entries, TODAY, "1m"), "open-drafts");
     expect(g.value).toBe(1);
     // 1つ前の期間の終点 01-31 では 2 本目もまだ下書き
     expect(g.history[0]).toBe(2);
   });
 
   it("computes median publish lead time", () => {
-    expect(gauge(draftSummary(entries, TODAY, "1m"), "publish-lead-time").value).toBe(41);
+    expect(gauge(noteSummary(entries, TODAY, "1m"), "publish-lead-time").value).toBe(41);
   });
 
   it("returns null publish lead time when nothing was published in the window", () => {
-    expect(gauge(draftSummary([draft({ created: "2024-01-01" })], TODAY, "1m"), "publish-lead-time").value).toBeNull();
+    expect(gauge(noteSummary([note({ created: "2024-01-01" })], TODAY, "1m"), "publish-lead-time").value).toBeNull();
+  });
+
+  it("counts notes created in the range whatever their status", () => {
+    const notes = [...entries, note({ created: "2024-02-15", published: "2024-02-15", status: "published" })];
+    // 02-01〜03-01 に作ったのは 02-15 の1件
+    expect(gauge(noteSummary(notes, TODAY, "1m"), "create-count").value).toBe(1);
+  });
+
+  it("does not count notes published on creation as open drafts", () => {
+    const notes = [note({ created: "2023-06-01", published: "2023-06-01", status: "published" })];
+    expect(gauge(noteSummary(notes, TODAY, "1m"), "open-drafts").value).toBe(0);
+    expect(gauge(noteSummary(notes, TODAY, "1m"), "oldest-draft").value).toBeNull();
   });
 
   it("computes oldest open draft age", () => {
-    expect(gauge(draftSummary(entries, TODAY, "1m"), "oldest-draft").value).toBe(60);
+    expect(gauge(noteSummary(entries, TODAY, "1m"), "oldest-draft").value).toBe(60);
   });
 });
 

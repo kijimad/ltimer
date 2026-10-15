@@ -75,8 +75,8 @@ WITH RECURSIVE dates AS (
   SELECT substr(start, 1, 10) AS d FROM clocks_local
   UNION ALL SELECT completed_date FROM tasks_local WHERE completed_date IS NOT NULL
   UNION ALL SELECT date FROM activity_daily
-  UNION ALL SELECT created FROM drafts
-  UNION ALL SELECT published FROM drafts WHERE published IS NOT NULL
+  UNION ALL SELECT created FROM notes
+  UNION ALL SELECT published FROM notes WHERE published IS NOT NULL
   UNION ALL SELECT substr(local_time(value), 1, 10) FROM meta WHERE key = 'generated_at'
 ),
 bounds AS (SELECT min(d) AS first, max(d) AS last FROM dates),

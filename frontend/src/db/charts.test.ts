@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod, wipByPeriod, cumulativeFlow, burnByDate, cashFlowByPeriod, activityByPeriod, activityByWeekdayHour, leadTimePace, taskSizeHistogram, estimates } from "./charts.ts";
+import { interruptionsByPeriod, queueTimeHistogram, throughputByPeriod, leadTimeHistogram, leadTimePercentiles, focusBlockHistogram, workByWeekdayHour, workByProject, OTHER_PROJECTS, netProfitByPeriod, wipByPeriod, cumulativeFlow, burnByDate, cashFlowByPeriod, activityByPeriod, activityByWeekdayHour, leadTimePace, taskSizeHistogram, estimates, notesInRange, notesCreatedByStatus, notesCreatedByTag, NO_TAG } from "./charts.ts";
 import { rows } from "./database.ts";
 import { createTestDatabase, fromTasks, fromDaily } from "../test/db.ts";
 import type { Task, TaskClock } from "../types/index.ts";
@@ -331,5 +331,59 @@ describe("estimates", () => {
     expect(estimates(db([done("2023-12-31", 30), done("2024-01-01", 30), done("2024-01-02", null), done("2024-01-03", 0)]), "2024-01-01")).toEqual([
       { title: "2024-01-01", effortMinutes: 30, actualMinutes: 60 },
     ]);
+  });
+});
+
+describe("notes", () => {
+  const note = (file: string, created: string, status: "draft" | "published", tags: string[] = [], published: string | null = status === "published" ? created : null) =>
+    ({ file, title: file, created, published, lead_time_days: null, status, tags });
+  const db = (notes: ReturnType<typeof note>[]) => createTestDatabase({ generatedAt: "2024-03-01T03:00:00Z", notes });
+  const notes = db([
+    note("old", "2023-12-31", "published", ["essay"]),
+    note("a", "2024-01-01", "published", ["essay", "book"]),
+    note("b", "2024-01-02", "draft", ["book"]),
+    note("c", "2024-01-15", "published"),
+    note("p", "2023-12-01", "published", ["essay"], "2024-01-03"),
+  ]);
+
+  it("lists notes created or published on or after startedAt, newest first, with their tags in filename order", () => {
+    expect(notesInRange(notes, "2024-01-01").map((n) => [n.file, n.tags])).toEqual([["c", []], ["b", ["book"]], ["a", ["essay", "book"]], ["p", ["essay"]]]);
+  });
+
+  it("always lists drafts, even created before startedAt", () => {
+    expect(notesInRange(notes, "2024-01-10").map((n) => n.file)).toEqual(["c", "b"]);
+  });
+
+  it("counts created notes per period by their status, filling empty periods", () => {
+    expect(notesCreatedByStatus(notes, "2024-01-01", "week").slice(0, 3)).toEqual([
+      { period: "2024-01-01", draft: 1, published: 1 },
+      { period: "2024-01-08", draft: 0, published: 0 },
+      { period: "2024-01-15", draft: 0, published: 1 },
+    ]);
+  });
+
+  it("counts created notes per period by their first tag, with untagged notes last", () => {
+    const { data, tags } = notesCreatedByTag(notes, "2024-01-01", "week");
+    // 範囲内ではどのタグも1件ずつなので名前順
+    expect(tags).toEqual([{ key: "tag:book", name: "book" }, { key: "tag:essay", name: "essay" }, { key: "no-tag", name: NO_TAG }]);
+    expect(data.slice(0, 3)).toEqual([
+      { period: "2024-01-01", "tag:book": 1, "tag:essay": 1, "no-tag": 0 },
+      { period: "2024-01-08", "tag:book": 0, "tag:essay": 0, "no-tag": 0 },
+      { period: "2024-01-15", "tag:book": 0, "tag:essay": 0, "no-tag": 1 },
+    ]);
+  });
+
+  it("orders tags by how many notes they have", () => {
+    expect(notesCreatedByTag(notes, "2023-12-01", "month").tags.map((t) => t.name)).toEqual(["essay", "book", NO_TAG]);
+  });
+
+  it("puts untagged notes last even when there are more of them", () => {
+    const many = db([note("x", "2024-01-01", "published"), note("y", "2024-01-01", "published"), note("z", "2024-01-01", "published", ["book"])]);
+    expect(notesCreatedByTag(many, "2024-01-01", "week").tags.map((t) => t.name)).toEqual(["book", NO_TAG]);
+  });
+
+  it("keeps tags named like the period column or the untagged series apart", () => {
+    const odd = db([note("x", "2024-01-01", "published", ["period"]), note("y", "2024-01-01", "published", [NO_TAG]), note("z", "2024-01-01", "published")]);
+    expect(notesCreatedByTag(odd, "2024-01-01", "week").data[0]).toEqual({ period: "2024-01-01", "tag:period": 1, [`tag:${NO_TAG}`]: 1, "no-tag": 1 });
   });
 });

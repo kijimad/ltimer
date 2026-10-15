@@ -6,7 +6,7 @@ import { LayoutSlotsContext } from "../hooks/useLayoutSlots.ts";
 
 const NAV_ITEMS = [
   { to: "/", label: "Tasks", end: true },
-  { to: "/draft", label: "Draft" },
+  { to: "/notes", label: "Notes" },
   { to: "/activity", label: "Activity" },
   { to: "/help", label: "Help" },
 ];

@@ -4,6 +4,11 @@ export const STATUS_COLORS = {
   CLOSE: "#a371f7",
 } as const;
 
+export const NOTE_STATUS = {
+  draft: { name: "draft", color: "#f0883e" },
+  published: { name: "published", color: "#3fb950" },
+} as const;
+
 export const PALETTE = [
   "#f0883e", "#3fb950", "#a371f7", "#58a6ff", "#f85149",
   "#d2a8ff", "#7ee787", "#ffa657", "#79c0ff", "#ff7b72",

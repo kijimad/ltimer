@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toUtc, parseDuration, parseTasks, parseActivities, parseTitle, parsePublishedFromGitLog, parseDraft, WORKFLOW_FILE } from "./org.ts";
+import { toUtc, parseDuration, parseTasks, parseActivities, parseTitle, parsePublishedFromGitLog, parseNote, WORKFLOW_FILE } from "./org.ts";
 
 describe("toUtc", () => {
   it("treats org timestamps as JST", () => {
@@ -127,26 +127,55 @@ describe("parsePublishedFromGitLog", () => {
     "R100\t20260101T000000--a__draft_x.org\t20260101T000000--a__book.org",
   ].join("\n");
 
-  it("keeps the latest rename that removed __draft_", () => {
-    expect([...parsePublishedFromGitLog(log)]).toEqual([["20260101T000000--a__book.org", "2026-09-15"]]);
+  it("keeps the latest rename that removed the draft tag, by note ID", () => {
+    expect([...parsePublishedFromGitLog(log)]).toEqual([["20260101T000000", "2026-09-15"]]);
+  });
+
+  it("ignores renames to a name without a timestamp", () => {
+    const log = ["2026-09-15T21:00:00+09:00", "", "R100\t20260103T000000--c__draft.org\tindex.org"].join("\n");
+    expect(parsePublishedFromGitLog(log).size).toBe(0);
+  });
+
+  it("finds the draft tag in any position", () => {
+    const log = ["2026-09-15T21:00:00+09:00", "", "R100\t20260103T000000--c__book_draft.org\t20260103T000000--c__book.org"].join("\n");
+    expect([...parsePublishedFromGitLog(log)]).toEqual([["20260103T000000", "2026-09-15"]]);
   });
 });
 
-describe("parseDraft", () => {
-  const published = new Map([["20260101T120000--a__book.org", "2026-01-31"]]);
+describe("parseNote", () => {
+  const published = new Map([["20260101T120000", "2026-01-31"]]);
 
-  it("reads drafts from the filename", () => {
-    expect(parseDraft("20260101T120000--a__draft_book.org", "#+title: A", published)).toEqual({
-      file: "20260101T120000--a__draft_book.org", title: "A", created: "2026-01-01", published: null, lead_time_days: null, status: "draft",
+  it("reads drafts from the filename and keeps draft out of the tags", () => {
+    expect(parseNote("20260101T120000--a__draft_book.org", "#+title: A", published)).toEqual({
+      file: "20260101T120000--a__draft_book.org", title: "A", created: "2026-01-01", published: null, lead_time_days: null, status: "draft", tags: ["book"],
     });
   });
 
-  it("computes lead time for published articles", () => {
-    expect(parseDraft("20260101T120000--a__book.org", "", published)).toMatchObject({ title: "20260101T120000--a__book.org", published: "2026-01-31", lead_time_days: 30 });
+  it("computes lead time for notes published by removing the draft tag", () => {
+    expect(parseNote("20260101T120000--a__book.org", "", published)).toMatchObject({
+      title: "20260101T120000--a__book.org", published: "2026-01-31", lead_time_days: 30, status: "published",
+    });
   });
 
-  it("ignores files that were never drafts or have no timestamp", () => {
-    expect(parseDraft("20260101T120000--z__book.org", "", published)).toBeNull();
-    expect(parseDraft("index.org", "", published)).toBeNull();
+  it("finds the publish date of a note renamed again after publishing", () => {
+    expect(parseNote("20260101T120000--a-retitled__wiki.org", "", published)).toMatchObject({ published: "2026-01-31", lead_time_days: 30 });
+  });
+
+  it("keeps a repeated tag once", () => {
+    expect(parseNote("20260102T000000--z__book_book.org", "", published)!.tags).toEqual(["book"]);
+  });
+
+  it("treats notes that never had a draft tag as published on creation, with every tag", () => {
+    expect(parseNote("20260102T000000--z__book_essay.org", "", published)).toMatchObject({
+      status: "published", created: "2026-01-02", published: "2026-01-02", lead_time_days: null, tags: ["book", "essay"],
+    });
+  });
+
+  it("reads org-roam style names without tags", () => {
+    expect(parseNote("20210508233810-org_roam.org", "", published)).toMatchObject({ status: "published", created: "2021-05-08", tags: [] });
+  });
+
+  it("ignores files without a timestamp", () => {
+    expect(parseNote("index.org", "", published)).toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import type { TimeRange } from "../types/index.ts";
 import type { GaugeMetric, Summary, TileMetric } from "../metrics.ts";
 import { summaryPeriods, type Period } from "../metrics.ts";
 import { rows } from "./database.ts";
-import { TASK_METRICS, DRAFT_METRICS, ACTIVITY_METRICS, FLOW_METRICS, ACTIVE_WIP_DAYS, series, evaluate, type MetricDef } from "./metricDefs.ts";
+import { TASK_METRICS, NOTE_METRICS, ACTIVITY_METRICS, FLOW_METRICS, ACTIVE_WIP_DAYS, series, evaluate, type MetricDef } from "./metricDefs.ts";
 
 /** 1行1列の結果を返す SQL を期間ごとに評価する */
 function scalar(db: Database, sql: string, params: SqlValue[]): number | null {
@@ -55,10 +55,10 @@ export function taskSummary(db: Database, asOf: string, range: TimeRange): Summa
   };
 }
 
-export function draftSummary(db: Database, asOf: string, range: TimeRange): Summary {
-  const periods = summaryPeriods(range, asOf, dataStart(db, "SELECT min(created) AS v FROM drafts"));
+export function noteSummary(db: Database, asOf: string, range: TimeRange): Summary {
+  const periods = summaryPeriods(range, asOf, dataStart(db, "SELECT min(created) AS v FROM notes"));
   return {
-    gauges: Object.values(DRAFT_METRICS).map((def) => gauge(db, periods, def)),
+    gauges: Object.values(NOTE_METRICS).map((def) => gauge(db, periods, def)),
     tiles: [],
   };
 }

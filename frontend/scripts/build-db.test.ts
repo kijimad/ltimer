@@ -32,7 +32,7 @@ describe("build-db", () => {
     const SQL = await initSqlJs();
     const db = new SQL.Database(readFileSync(out));
     tables = Object.fromEntries(
-      ["tasks", "task_clocks", "activity_clocks", "drafts"].map((t) => [t, db.exec(`SELECT * FROM ${t}`)[0]?.values ?? []]),
+      ["tasks", "task_clocks", "activity_clocks", "notes", "note_tags"].map((t) => [t, db.exec(`SELECT * FROM ${t}`)[0]?.values ?? []]),
     );
     expect(db.exec("SELECT value FROM meta WHERE key = 'generated_at'")[0].values[0][0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   }, 30000);
@@ -46,7 +46,12 @@ describe("build-db", () => {
     expect(tables.activity_clocks).toEqual([["英語を読む", "2024-01-02T23:00:00Z", "2024-01-02T23:05:00Z", 5]]);
   });
 
-  it("writes drafts", () => {
-    expect(tables.drafts).toEqual([["20240105T000000--memo__draft_book.org", "下書き", "2024-01-05", null, null, "draft"]]);
+  it("writes every timestamped note with its tags", () => {
+    expect(tables.notes).toEqual([
+      ["20210904124352-workflow.org", "20210904124352-workflow.org", "2021-09-04", "2021-09-04", null, "published"],
+      ["20240101T000000--project.org", "project", "2024-01-01", "2024-01-01", null, "published"],
+      ["20240105T000000--memo__draft_book.org", "下書き", "2024-01-05", null, null, "draft"],
+    ]);
+    expect(tables.note_tags).toEqual([["20240105T000000--memo__draft_book.org", "book"]]);
   });
 });

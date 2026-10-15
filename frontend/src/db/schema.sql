@@ -31,9 +31,9 @@ CREATE TABLE activity_clocks (
   minutes INTEGER NOT NULL
 );
 
--- created / published は時点ではなく暦日 (YYYY-MM-DD)
-CREATE TABLE drafts (
-  file TEXT NOT NULL,
+-- created / published は暦日。draft タグが付いたことのないメモは作成日に公開したとみなし、lead_time_days は入れない
+CREATE TABLE notes (
+  file TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   created TEXT NOT NULL,
   published TEXT,
@@ -41,4 +41,11 @@ CREATE TABLE drafts (
   status TEXT NOT NULL CHECK (status IN ('draft', 'published'))
 );
 
+-- draft は status で表すので含めない
+CREATE TABLE note_tags (
+  file TEXT NOT NULL REFERENCES notes (file),
+  tag TEXT NOT NULL
+);
+
 CREATE INDEX task_clocks_task ON task_clocks (task_id);
+CREATE INDEX note_tags_file ON note_tags (file);

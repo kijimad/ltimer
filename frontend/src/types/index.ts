@@ -23,13 +23,14 @@ export interface DailyWorkEntry {
   tasks: { title: string; minutes: number }[];
 }
 
-export interface DraftEntry {
+export interface NoteEntry {
   file: string;
   title: string;
   created: string;
   published: string | null;
   lead_time_days: number | null;
   status: "draft" | "published";
+  tags: string[];
 }
 
 export interface ActivityDailyEntry {

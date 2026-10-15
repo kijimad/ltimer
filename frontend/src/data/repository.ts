@@ -1,5 +1,5 @@
 // UI が使うデータの取得口。保存の方式 (SQLite / sql.js) には依存しない
-import type { Task, TimeRange, TimeUnit, DailyWorkEntry, DraftEntry } from "../types/index.ts";
+import type { Task, TimeRange, TimeUnit, DailyWorkEntry, NoteEntry } from "../types/index.ts";
 import type { Summary } from "../metrics.ts";
 
 export interface PeriodCount {
@@ -145,11 +145,24 @@ export interface ActivityRepository {
   streaks(startedAt: string, asOf: string): Streak[];
 }
 
-export interface DraftRepository {
+export interface NotesByStatus {
+  period: string;
+  draft: number;
+  published: number;
+}
+
+export interface NoteTagSeries {
+  key: string;
+  name: string;
+}
+
+export interface NoteRepository {
   summary(asOf: string, range: TimeRange): Summary;
-  /** 範囲内に作成または公開された記事 */
-  inRange(startedAt: string): DraftEntry[];
-  ages(startedAt: string, asOf: string): { title: string; file: string; days: number }[];
+  /** 範囲内に作成または公開されたメモと、範囲によらず今の下書き */
+  inRange(startedAt: string): NoteEntry[];
+  createdByStatus(startedAt: string, unit: TimeUnit): NotesByStatus[];
+  /** 最初のタグで分ける。タグなしは最後 */
+  createdByTag(startedAt: string, unit: TimeUnit): { data: Record<string, string | number>[]; tags: NoteTagSeries[] };
 }
 
 export interface Repository {
@@ -157,5 +170,5 @@ export interface Repository {
   generatedAt(): string;
   tasks: TaskRepository;
   activities: ActivityRepository;
-  drafts: DraftRepository;
+  notes: NoteRepository;
 }

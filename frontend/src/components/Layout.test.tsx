@@ -24,7 +24,7 @@ function renderApp(route = "/") {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<RangePage name="tasks" />} />
-        <Route path="draft" element={<RangePage name="draft" />} />
+        <Route path="notes" element={<RangePage name="notes" />} />
         <Route path="help" element={<p>help</p>} />
       </Route>
     </Routes>,
@@ -36,7 +36,7 @@ describe("Layout", () => {
   it("renders navigation links", () => {
     renderApp();
     expect(screen.getByText("Tasks")).toBeInTheDocument();
-    expect(screen.getByText("Draft")).toBeInTheDocument();
+    expect(screen.getByText("Notes")).toBeInTheDocument();
   });
 
   it("renders the time range switch inside the navigation bar", () => {
@@ -50,8 +50,8 @@ describe("Layout", () => {
     renderApp();
     expect(screen.getByText("tasks: 1m")).toBeInTheDocument();
     await userEvent.click(screen.getByText("半年"));
-    await userEvent.click(screen.getByText("Draft"));
-    expect(screen.getByText("draft: 6m")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Notes"));
+    expect(screen.getByText("notes: 6m")).toBeInTheDocument();
   });
 
   it("hides the switch on pages without a time range", () => {

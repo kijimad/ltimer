@@ -6,7 +6,8 @@ export const TABLES = {
   tasks: ["id", "title", "file", "status", "closed_at", "effort_minutes", "deadline"],
   task_clocks: ["task_id", "start", "end", "minutes"],
   activity_clocks: ["title", "start", "end", "minutes"],
-  drafts: ["file", "title", "created", "published", "lead_time_days", "status"],
+  notes: ["file", "title", "created", "published", "lead_time_days", "status"],
+  note_tags: ["file", "tag"],
 } as const;
 
 /** 開いたときに閲覧者のタイムゾーンで作る一時テーブル */
@@ -36,7 +37,7 @@ export interface Records {
   };
   task_clocks: { task_id: number; start: string; end: string; minutes: number };
   activity_clocks: { title: string; start: string; end: string; minutes: number };
-  drafts: {
+  notes: {
     file: string;
     title: string;
     created: string;
@@ -44,12 +45,13 @@ export interface Records {
     lead_time_days: number | null;
     status: "draft" | "published";
   };
+  note_tags: { file: string; tag: string };
 }
 
 export type ClockRow = Omit<Records["task_clocks"], "task_id">;
 /** パーサーが作るタスク。id は挿入するときに振る */
 export type TaskRow = Omit<Records["tasks"], "id"> & { clocks: ClockRow[] };
-export type DraftRow = Records["drafts"];
+export type NoteRow = Records["notes"] & { tags: string[] };
 
 type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 // 行の型と列の一覧のずれをコンパイル時に検出する
@@ -58,7 +60,8 @@ const columnsMatchRecords: { [T in keyof Records]: Equal<keyof Records[T], (type
   tasks: true,
   task_clocks: true,
   activity_clocks: true,
-  drafts: true,
+  notes: true,
+  note_tags: true,
 };
 void columnsMatchRecords;
 

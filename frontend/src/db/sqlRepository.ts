@@ -1,7 +1,7 @@
 import type { Database } from "sql.js";
 import type { Repository } from "../data/repository.ts";
 import { generatedAt } from "./queries.ts";
-import { taskSummary, draftSummary, activitySummary } from "./summary.ts";
+import { taskSummary, noteSummary, activitySummary } from "./summary.ts";
 import * as c from "./charts.ts";
 
 export function createSqlRepository(db: Database): Repository {
@@ -38,10 +38,11 @@ export function createSqlRepository(db: Database): Repository {
       workByWeekdayHour: (s) => c.activityByWeekdayHour(db, s),
       streaks: (s, asOf) => c.activityStreaks(db, s, asOf),
     },
-    drafts: {
-      summary: (asOf, range) => draftSummary(db, asOf, range),
-      inRange: (s) => c.draftsInRange(db, s),
-      ages: (s, asOf) => c.draftAges(db, s, asOf),
+    notes: {
+      summary: (asOf, range) => noteSummary(db, asOf, range),
+      inRange: (s) => c.notesInRange(db, s),
+      createdByStatus: (s, u) => c.notesCreatedByStatus(db, s, u),
+      createdByTag: (s, u) => c.notesCreatedByTag(db, s, u),
     },
   };
 }
